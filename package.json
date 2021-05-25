@@ -1,0 +1,12 @@
+{
+  "name": "Testauspizza",
+  "version": "1.0.0",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "mysql2": "^2.2.5",
+    "needle": "^2.6.0",
+    "sequelize": "^6.6.2"
+  },
+  "repository": "https://github.com/Testausserveri/Testauspizza",
+  "license": "Apache 2.0"
+}

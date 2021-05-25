@@ -1,0 +1,10 @@
+{
+  "token": "<token>",
+  "db": {
+    "dbname": "",
+    "username": "",
+    "password": "",
+    "host": ""
+  },
+  "debug": false
+}
