@@ -76,7 +76,6 @@ function search(state, msg, client, db) {
         if (query.length >= 3) {
             api.search(query).then(searchResults => {
                 if (searchResults.ingredients) {
-                    console.log(category);
                     searchResults.ingredients.results = searchResults.ingredients.results.filter(item => {return item.ingredientCategoryID === category});
                     if (searchResults.ingredients.results.length > 0) {
                         embeds.ingredients(searchResults.ingredients.results.splice(0, 15), state.temp.currentSize).then(embed => {
@@ -103,7 +102,6 @@ function search(state, msg, client, db) {
         if (query.length >= 3) {
             api.search(query).then(searchResults => {
                 if (searchResults.ingredients) {
-                    console.log(searchResults.ingredients.results.length);
                     if (searchResults.ingredients.results.length > 0) {
                         embeds.ingredients(searchResults.ingredients.results.splice(0, 15), state.temp.currentSize).then(embed => {
                             if (embed === undefined) {

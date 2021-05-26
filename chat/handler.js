@@ -27,8 +27,10 @@ function onMessage(msg, client, db) {
                         productsModule.deselect(state, msg, client, db);
                     } else if (msg.content === "!add") {
                         productsModule.add(state, msg, client, db);
-                    } else if (msg.content === "!products") {
+                    } else if (msg.content === "!cart") {
                         productsModule.list(state, msg, client, db);
+                    } else if (msg.content.startsWith("!rs ")) {
+                        productsModule.remove(state, msg, client, db);
                     } else if (msg.content.startsWith("!search ")) {
                         productsModule.search(state, msg, client, db);
                     } else if (msg.content === "!pizza" && state.temp.currentProduct) {

@@ -18,7 +18,7 @@ function popularProducts() {
     });
 }
 
-function product(id) {
+function product(id, thumbnail=false) {
     return new Promise((resolve, reject) => {
         api.getProduct(id).then(product => {
             if (product === undefined) {
@@ -28,7 +28,8 @@ function product(id) {
             let sizes = product.productSizes.map(item => {return item.name+" ("+item.productSizeID+")"+(item.calculatedPrice ? " "+item.calculatedPrice+"€" : "")}).join(", ");
             let popularEmbed = new Discord.MessageEmbed()
                 .setColor('#4bc601')
-                .setImage(product.imagepath)
+                .setThumbnail(thumbnail ? product.imagepath : undefined)
+                .setImage(!thumbnail ? product.imagepath : undefined)
                 .setTitle(product.name)
                 .addField("Kuvaus", product.description)
                 .addField("Numero", product.productID)
@@ -40,20 +41,21 @@ function product(id) {
     });
 }
 
-function addedProduct(product) {
+function addedProduct(product, index) {
     return new Promise((resolve, reject) =>  {
         utils.calculatePrice(product).then(price => {
             let embed = new Discord.MessageEmbed()
                 .setColor('#4bc601')
-                .setImage(product.product.imagepath)
-                .setTitle(product.product.name)
+                .setThumbnail(product.product.imagepath)
+                .setTitle(`(${index+1}) `+product.product.name)
                 .addField("Kuvaus", product.product.description)
                 .addField("Numero", product.product.productID)
+                .addField("Ainesosat", price.ingredients)
                 .addField("Alustava hinta", (product.product.hasMinimumPrice ? "alk. " : "")+product.product.price+"€")
-                .addField("Hinta (+ ainesosat)", price+"€")
+                .addField("Hinta (+ ainesosat)", price.price+"€")
                 .addField("Mausteinen", product.product.isSpicy ? "Kyllä" : "Ei")
                 .addField("Koko", product.size.name+" ("+product.size.productSizeID+")"+(product.size.calculatedPrice ? " "+product.size.calculatedPrice+"€" : ""));
-            resolve(embed);
+            resolve({embed, price: price.price});
         }).catch(err => {reject(err);})
     });
 }

@@ -1,6 +1,7 @@
 const utils = require('../utils');
 const embeds = require('../embeds');
 const api = require('../../kotipizza/api');
+const {AsyncIterator} = require("../../utils/iterator");
 
 function search(state, msg, client, db) {
     let split = msg.content.split(" ");
@@ -11,7 +12,7 @@ function search(state, msg, client, db) {
                 if (searchResults.products) {
                     if (searchResults.products.results.length > 0) {
                         searchResults.products.results.splice(0, 10).forEach(item => {
-                            embeds.product(item.productID).then(embed => {
+                            embeds.product(item.productID, true).then(embed => {
                                 if (embed === undefined) {
                                     msg.channel.send(utils.templates.error);
                                     return;
@@ -95,14 +96,44 @@ function add(state, msg, client, db) {
 
 function list(state, msg, client, db) {
     msg.channel.send("**Tuotteet:**");
-    if (state.orderItems.length === 0) {
-        msg.channel.send(utils.templates.sessionCommands);
-    }
-    state.orderItems.forEach(item => {
-        embeds.addedProduct(item).then(embed => {
-            msg.channel.send(embed);
+    let iterator = new AsyncIterator(undefined, undefined, state.orderItems);
+    let total = 0;
+    iterator.callback = (item, index) => {
+        embeds.addedProduct(item, index).then(embed => {
+            msg.channel.send(embed.embed);
+            total += embed.price;
+            iterator.nextItem();
+        }).catch(err => {
+            console.error(err);
+            msg.channel.send(utils.templates.error);
         })
-    })
+    }
+    iterator.endCallback = () => {
+        msg.channel.send("Yhteensä: **"+total+"€**\n\n")
+        msg.channel.send('_'+utils.templates.cartCommands+'_')
+    }
+    iterator.nextItem();
+}
+
+function remove(state, msg, client, db) {
+    let split = msg.content.split(" ");
+    if (split.length > 1) {
+        let id = parseInt(split[1]);
+        if (!isNaN(id)) {
+            id = id-1;
+            if (typeof state.orderItems[id] !== 'undefined') {
+                state.orderItems.splice(id, 1);
+                db.updateUser(msg.author.id, state).then(() => {
+                    msg.channel.send(utils.templates.done);
+                }).catch(err => {
+                    console.error(err);
+                    msg.channel.send(utils.templates.error);
+                })
+                return;
+            }
+        }
+    }
+    msg.channel.send(utils.templates.productNotFound);
 }
 
 module.exports = {
@@ -110,5 +141,6 @@ module.exports = {
     select,
     deselect,
     add,
-    list
+    list,
+    remove
 }
