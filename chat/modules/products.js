@@ -8,6 +8,7 @@ function search(state, msg, client, db) {
     if (split.length > 1) {
         let query = split[1];
         if (query.length >= 3) {
+            msg.channel.startTyping();
             api.search(query).then(searchResults => {
                 if (searchResults.products) {
                     if (searchResults.products.results.length > 0) {
@@ -26,6 +27,11 @@ function search(state, msg, client, db) {
                 } else {
                     msg.channel.send(utils.templates.error);
                 }
+                msg.channel.stopTyping();
+            }).catch(err => {
+                msg.channel.stopTyping();
+                console.error(err);
+                msg.channel.send(utils.templates.error);
             });
             return;
         }
@@ -38,20 +44,26 @@ function select(state, msg, client, db) {
     if (split.length > 1) {
         let id = parseInt(split[1]);
         if (!isNaN(id)) {
+            msg.channel.startTyping();
             embeds.product(id).then(result => {
+                msg.channel.stopTyping();
                 if (result !== undefined) {
                     state.temp = utils.defaultTemp();
                     state.temp.currentProduct = result.product;
+                    msg.channel.startTyping();
                     db.updateUser(msg.author.id, state).then(() => {
+                        msg.channel.stopTyping();
                         msg.channel.send(result.popularEmbed);
                         msg.channel.send("Tuote on valittu. Valitse pizzan koko komennolla `!size <numero>` tai peru valinta komennolla `!deselect`")
                     }).catch(err => {
+                        msg.channel.stopTyping();
                         console.error(err);
                         msg.channel.send(utils.templates.error);
                     })
                 } else
                     msg.channel.send(utils.templates.productNotFound);
             }).catch(err => {
+                msg.channel.stopTyping();
                 console.error(err);
                 msg.channel.send(utils.templates.error);
             })
@@ -98,12 +110,14 @@ function list(state, msg, client, db) {
     msg.channel.send("**Tuotteet:**");
     let iterator = new AsyncIterator(undefined, undefined, state.orderItems);
     let total = 0;
+    msg.channel.startTyping();
     iterator.callback = (item, index) => {
         embeds.addedProduct(item, index).then(embed => {
             msg.channel.send(embed.embed);
             total += embed.price;
             iterator.nextItem();
         }).catch(err => {
+            msg.channel.stopTyping();
             console.error(err);
             msg.channel.send(utils.templates.error);
         })
@@ -111,6 +125,7 @@ function list(state, msg, client, db) {
     iterator.endCallback = () => {
         msg.channel.send("Yhteensä: **"+total+"€**\n\n")
         msg.channel.send('_'+utils.templates.cartCommands+'_')
+        msg.channel.stopTyping();
     }
     iterator.nextItem();
 }

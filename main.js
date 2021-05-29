@@ -7,6 +7,8 @@ const db = require('./db/db');
 
 const dataBase = new db.Database(config.db.dbname, config.db.username, config.db.password, config.db.host);
 
+global.config = config;
+
 client.on("message", function (message) {
     if (message.channel.type === "dm" && message.author.id !== client.user.id) {
         // DM message

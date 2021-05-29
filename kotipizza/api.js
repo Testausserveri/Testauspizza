@@ -151,8 +151,48 @@ function getProduct(id) {
     })
 }
 
-function makeOrder() {
-    // TODO WIP!
+function getNearbyShops(deliveryType, coordinates) {
+    return new Promise((resolve, reject) => {
+        http.get(config.eComBaseUrl+`/webshop/v1/restaurants/nearby?type=${deliveryType.toUpperCase()}&coordinates=${coordinates}`, res => {
+            if (res.statusCode === 200) {
+                resolve(res.body);
+            } else if (res.statusCode === 404) {
+                resolve(undefined);
+            } else {
+                reject("Response code "+res.statusCode);
+            }
+        }, err => {
+            reject(err);
+        })
+    })
+}
+
+function getPrice(body) {
+    return new Promise((resolve, reject) => {
+        http.post(config.baseUrl+"/api/v2/shoppingcart/price/", body, res => {
+            if (res.statusCode === 200) {
+                resolve(res.body);
+            } else {
+                reject("Response code "+res.statusCode);
+            }
+        }, err => {
+            reject(err);
+        });
+    });
+}
+
+function makeOrder(body) {
+    return new Promise((resolve, reject) => {
+        http.post(config.baseUrl+"/api/v2/shoppingcart/order/", body, res => {
+            if (res.statusCode === 200) {
+                resolve(res.body);
+            } else {
+                reject("Response code "+res.statusCode);
+            }
+        }, err => {
+            reject(err);
+        });
+    });
 }
 
 module.exports = {
@@ -166,5 +206,7 @@ module.exports = {
     getIngredientCategories,
     getIngredientsWithCategories,
     getProduct,
-    search
+    search,
+    getPrice,
+    getNearbyShops
 }

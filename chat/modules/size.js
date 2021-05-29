@@ -6,6 +6,7 @@ function handle(state, msg, client, db) {
     if (split.length > 1) {
         let id = parseInt(split[1]);
         if (!isNaN(id)) {
+            msg.channel.startTyping();
             embeds.product(state.temp.currentProduct.productID).then(result => {
                 if (result === undefined) {
                     msg.channel.send(utils.templates.error)
@@ -32,7 +33,9 @@ function handle(state, msg, client, db) {
                         msg.channel.send(utils.templates.sizeNotFound);
                     }
                 }
+                msg.channel.stopTyping();
             }).catch(err => {
+                msg.channel.stopTyping();
                 console.error(err);
                 msg.channel.send(utils.templates.error);
             });

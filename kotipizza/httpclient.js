@@ -7,7 +7,7 @@ const config = {
     }
 }
 
-function post(url, data, signatureValues=[], response, error) {
+function post(url, data, response, error) {
     needle.post(url, data, config, function (err, resp) {
         if (err) {
             error(err);

@@ -5,6 +5,7 @@ const popularModule = require('./modules/popular');
 const sessionModule = require('./modules/session');
 const ingredientsModule = require('./modules/ingredients');
 const productsModule = require('./modules/products');
+const orderModule = require('./modules/order');
 
 function onMessage(msg, client, db) {
     db.getUserOrCreate(msg.author.id).then(state => {
@@ -47,6 +48,8 @@ function onMessage(msg, client, db) {
                         ingredientsModule.categories(state, msg, client, db);
                     } else if (msg.content === "!li" && state.temp.currentProduct && state.temp.currentSize) {
                         ingredientsModule.list(state, msg, client, db);
+                    } else if (msg.content === "!order" && state.orderItems && state.orderItems.length > 0) {
+                        orderModule.startOrder(state, msg, client, db);
                     } else {
                         if (state.temp.currentProduct === undefined)
                             msg.channel.send(utils.templates.sessionCommands);
@@ -55,6 +58,10 @@ function onMessage(msg, client, db) {
                         else
                             msg.channel.send(utils.templates.ingredientCommands);
                     }
+                    break;
+                }
+                case 'ordering': {
+                    orderModule.inputWhileOrder(state, msg, client, db);
                     break;
                 }
             }

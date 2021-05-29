@@ -21,10 +21,13 @@ function remove(state, msg, client, db) {
                 state.temp.ingredients = state.temp.ingredients.filter(item => {
                     return item.id !== id
                 });
+                msg.channel.startTyping();
                 db.updateUser(msg.author.id, state).then(() => {
+                    msg.channel.stopTyping();
                     msg.channel.send(utils.templates.done);
                 }).catch(err => {
                     console.error(err);
+                    msg.channel.stopTyping();
                     msg.channel.send(utils.templates.error);
                 })
                 return;
@@ -39,6 +42,7 @@ function add(state, msg, client, db) {
     if (split.length > 1) {
         let id = parseInt(split[1]);
         if (!isNaN(id)) {
+            msg.channel.startTyping();
             api.getIngredient(id).then(ingredient => {
                 if (ingredient === undefined || !ingredient.isActive) {
                     msg.channel.send(utils.templates.ingredientNotFound);
@@ -50,14 +54,18 @@ function add(state, msg, client, db) {
                     state.temp.ingredients.push({id: ingredient.ingredientID, dosingId: dosing.dosingID});
                     db.updateUser(msg.author.id, state).then(() => {
                         msg.channel.send(utils.templates.done);
+                        msg.channel.stopTyping();
                     }).catch(err => {
                         console.error(err);
+                        msg.channel.stopTyping();
                         msg.channel.send(utils.templates.error);
                     })
                 } else {
+                    msg.channel.stopTyping();
                     msg.channel.send(utils.templates.ingredientNotFound);
                 }
             }).catch(err => {
+                msg.channel.stopTyping();
                 console.error(err);
                 msg.channel.send(utils.templates.error);
             });
@@ -69,6 +77,7 @@ function add(state, msg, client, db) {
 
 function search(state, msg, client, db) {
     let split = msg.content.split(" ");
+    msg.channel.startTyping();
     if (split.length > 2 && !isNaN(parseInt(split[2]))) {
         // Filter with category
         let category = parseInt(split[2]);
@@ -94,6 +103,11 @@ function search(state, msg, client, db) {
                 } else {
                     msg.channel.send(utils.templates.error);
                 }
+                msg.channel.stopTyping();
+            }).catch(err => {
+                msg.channel.stopTyping();
+                console.error(err);
+                msg.channel.send(utils.templates.error);
             });
             return;
         }
@@ -119,6 +133,11 @@ function search(state, msg, client, db) {
                 } else {
                     msg.channel.send(utils.templates.error);
                 }
+                msg.channel.stopTyping();
+            }).catch(err => {
+                msg.channel.stopTyping();
+                console.error(err);
+                msg.channel.send(utils.templates.error);
             });
             return;
         }
@@ -127,10 +146,13 @@ function search(state, msg, client, db) {
 }
 
 function categories(state, msg, client, db) {
+    msg.channel.startTyping();
     api.getIngredientCategories().then(categories => {
+        msg.channel.stopTyping();
         msg.channel.send(embeds.ingredientCategories(categories));
     }).catch(err => {
         console.error(err);
+        msg.channel.stopTyping();
         msg.channel.send(utils.templates.error);
     });
 }

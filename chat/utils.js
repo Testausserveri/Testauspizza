@@ -12,7 +12,7 @@ function defaultState() {
             city: undefined,
             emailMarketingPermission: false,
             smsMarketingPermission: false,
-            receiveSMSNotification: false,
+            receiveSMSNotification: true,
             coordinates: {
                 longitude: undefined, latitude: undefined
             },
@@ -21,7 +21,7 @@ function defaultState() {
         deliveryType: undefined,
         paymentMethod: undefined,
         preOrderTime: undefined,
-        shopId: undefined,
+        shop: undefined,
         hotspotId: -1,
         redirectToOrderTracking: true,
         temp: defaultTemp()
@@ -59,6 +59,17 @@ function calculatePrice(product) {
     })
 }
 
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function getRestaurantLink(shop) {
+    return 'https://kotipizza.fi/ravintolat/'+shop.displayName.toLowerCase()
+        .replace(/(\s|_|\||,|:|\(|\))/g, "-")
+        .replace(/(---|--)/g, "-")
+        .replace(/-$/g, "");
+}
+
 const global = {
     selectSize: "Valitse koko komennolla `!size <numero>`. Jos haluat nähdä valitun pizzan, kirjoita komento `!pizza`.",
     sessionCommands: "Voit hakea tuotteita komennolla `!search hakusana`, valita pizzan komennolla `!select <pizzanumero>`, ja perua tilauksen komennolla `!cancel`.\nSuosituimmat pizzat saat komennolla `!popular`\nListaa ostoskori komennolla `!cart`, poista tuote ostoskorista komennolla `!rs <numero>`\nKun olet valinnut tuotteet, siirry tilaamaan komennolla `!order`",
@@ -82,12 +93,32 @@ const templates = {
     welcomingIngredientCommands: "Yllä näet valitut ainesosat.\n"+global.ingredientCommands,
     ingredientCommands: global.ingredientCommands,
     continueShopping: "Voit jatkaa muiden tuotteiden lisäystä, listata ostoskorin komennolla `!cart`, poista tuote ostoskorista komennolla `!rs <numero>` tai jatkaa kassaan komennolla `!order`",
-    cartCommands: "Ostoskorista voi poistaa tuotteen komennolla `!rs <numero>`"
+    cartCommands: "Ostoskorista voi poistaa tuotteen komennolla `!rs <numero>`",
+    orderingGuide: "Haluatko kuljetusta, syötkö Kotipizzan ravintolassa vai haluatko toimitusta?\nVastaa (nouto, ravintola tai toimitus)",
+    locationNotFound: "🤔 Osoitteela ei löytynyt mitään. Kokeile uudelleen toisella hakusanalla.",
+    osmNote: "Testauspizza | © OpenStreetMapin tekijät",
+    searching: "🔎 Haetaan...",
+    searchShop: "🔎 Hae Kotipizza ravintola syöttämällä hakusana:",
+    searchNearestShop: "🔎 Haetaan lähimmät ravintolat...",
+    enterDeliveryAddress: "🗺️ Syötä toimitusosoite muodossa (<Osoite>, <Postinumero>, <Kaupunki>)",
+    invalidAddressFormat: "Osoitteen muoto ei ole oikein. Oikea muoto: <Osoite>, <Postinumero>, <Kaupunki>"
+}
+
+const constants = {
+    deliveryTypes: {
+        eatInStore: "eatin",
+        delivery: "delivery",
+        pickup: "pickup",
+        hotStop: "hotspot"
+    }
 }
 
 module.exports = {
     defaultState,
     templates,
     defaultTemp,
-    calculatePrice
+    calculatePrice,
+    constants,
+    capitalizeFirstLetter,
+    getRestaurantLink
 }

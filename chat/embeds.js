@@ -47,9 +47,9 @@ function addedProduct(product, index) {
             let embed = new Discord.MessageEmbed()
                 .setColor('#4bc601')
                 .setThumbnail(product.product.imagepath)
-                .setTitle(`(${index+1}) `+product.product.name)
+                .setTitle(product.product.name)
                 .addField("Kuvaus", product.product.description)
-                .addField("Numero", product.product.productID)
+                .addField("Numero", index+1)
                 .addField("Ainesosat", price.ingredients)
                 .addField("Alustava hinta", (product.product.hasMinimumPrice ? "alk. " : "")+product.product.price+"€")
                 .addField("Hinta (+ ainesosat)", price.price+"€")
@@ -117,11 +117,27 @@ function ingredientCategories(categories) {
         .addFields(categoryFields);
 }
 
+function shopEmbed(shop, deliveryType) {
+    let fields = [
+        {name: 'Numero', value: shop.restaurantId},
+        {name: 'Osoite', value: [shop.streetAddress, shop.zipCode, shop.city].join(", ")},
+        {name: 'Kuljetusmaksu', value: `${shop.dynamicDeliveryFee ? 'Dynaaminen hinta, ': ''}${shop.dynamicDeliveryFee || shop.deliveryFee}€`}
+    ];
+    if (!shop['openFor'+utils.capitalizeFirstLetter(deliveryType.toLowerCase())]) {
+        fields.push({name: '**Kiinni**', value: `[Aukioloajat](${utils.getRestaurantLink(shop)})`})
+    }
+    return new Discord.MessageEmbed()
+        .setColor('#4bc601')
+        .setTitle(shop.displayName)
+        .addFields(fields);
+}
+
 module.exports = {
     popularProducts,
     product,
     selectedIngredients,
     ingredients,
     ingredientCategories,
-    addedProduct
+    addedProduct,
+    shopEmbed
 }
