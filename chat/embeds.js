@@ -1,6 +1,7 @@
 const api = require('../kotipizza/api');
 const Discord = require("discord.js");
 const utils = require('./utils');
+const apiConfig = require('../kotipizza/config');
 
 function popularProducts() {
     return new Promise((resolve, reject) => {
@@ -119,17 +120,45 @@ function ingredientCategories(categories) {
 
 function shopEmbed(shop, deliveryType) {
     let fields = [
-        {name: 'Numero', value: shop.restaurantId},
-        {name: 'Osoite', value: [shop.streetAddress, shop.zipCode, shop.city].join(", ")},
-        {name: 'Kuljetusmaksu', value: `${shop.dynamicDeliveryFee ? 'Dynaaminen hinta, ': ''}${shop.dynamicDeliveryFee || shop.deliveryFee}€`}
+        {name: 'Osoite', value: [shop.streetAddress, shop.zipCode, shop.city].join(", ")}
     ];
+    if (deliveryType === utils.constants.deliveryTypes.delivery)
+        fields.push({name: 'Kuljetusmaksu', value: `${shop.dynamicDeliveryFee ? 'Dynaaminen hinta, ': ''}${shop.dynamicDeliveryFee || shop.deliveryFee}€`});
     if (!shop['openFor'+utils.capitalizeFirstLetter(deliveryType.toLowerCase())]) {
         fields.push({name: '**Kiinni**', value: `[Aukioloajat](${utils.getRestaurantLink(shop)})`})
+    } else {
+        fields.push({name: 'Numero', value: shop.restaurantId});
     }
     return new Discord.MessageEmbed()
         .setColor('#4bc601')
         .setTitle(shop.displayName)
         .addFields(fields);
+}
+
+function buildMethodPaymentUrl(method) {
+    let endpoint = method.url;
+    let queryParams = [];
+    method.parameters.forEach(param => {
+        queryParams.push([param.name, encodeURIComponent(param.value)].join("="));
+    });
+    return endpoint+'?'+queryParams.join("&");
+}
+
+function paymentMethodsEmbed(order) {
+    let fields = [];
+    if (order.cashPaymentEnabled) {
+        fields.push(new Discord.MessageEmbed()
+            .setColor('#4bc601')
+            .setTitle("Käteinen")
+            .setURL(apiConfig.getCODPaymentLink(order.orderKey, order.orderID)))
+    }
+    order.paymentMethodsV2.forEach(method => {
+        fields.push(new Discord.MessageEmbed()
+            .setColor('#4bc601')
+            .setTitle(method.name)
+            .setURL(buildMethodPaymentUrl(method)))
+    });
+    return fields;
 }
 
 module.exports = {
@@ -139,5 +168,6 @@ module.exports = {
     ingredients,
     ingredientCategories,
     addedProduct,
-    shopEmbed
+    shopEmbed,
+    paymentMethodsEmbed
 }

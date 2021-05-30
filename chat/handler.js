@@ -61,6 +61,13 @@ function onMessage(msg, client, db) {
                     break;
                 }
                 case 'ordering': {
+                    if (msg.content === "!order") {
+                        orderModule.startOrder(state, msg, client, db);
+                        return;
+                    } else if (msg.content.startsWith("!select ")) {
+                        orderModule.selectLocation(state, msg, client, db);
+                        return;
+                    }
                     orderModule.inputWhileOrder(state, msg, client, db);
                     break;
                 }

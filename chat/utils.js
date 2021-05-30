@@ -6,25 +6,16 @@ function defaultState() {
         orderId: undefined,
         buyerId: 0,
         orderItems: [],
-        contact: {
-            street: undefined,
-            postalCode: undefined,
-            city: undefined,
-            emailMarketingPermission: false,
-            smsMarketingPermission: false,
-            receiveSMSNotification: true,
-            coordinates: {
-                longitude: undefined, latitude: undefined
-            },
-            deliveryDistance: 1
-        },
+        contact: defaultContact(),
         deliveryType: undefined,
         paymentMethod: undefined,
         preOrderTime: undefined,
         shop: undefined,
         hotspotId: -1,
         redirectToOrderTracking: true,
-        temp: defaultTemp()
+        temp: defaultTemp(),
+        timing: undefined,
+        order: undefined
     }
 }
 
@@ -33,6 +24,25 @@ function defaultTemp() {
         currentProduct: undefined,
         currentSize: undefined,
         ingredients: []
+    }
+}
+
+function defaultContact() {
+    return {
+        street: undefined,
+        postalCode: undefined,
+        city: undefined,
+        emailMarketingPermission: false,
+        smsMarketingPermission: false,
+        receiveSMSNotification: true,
+        coordinates: {
+            longitude: undefined, latitude: undefined
+        },
+        email: undefined,
+        firstName: undefined,
+        lastName: undefined,
+        phoneNumber: undefined,
+        deliveryDistance: 1
     }
 }
 
@@ -57,6 +67,38 @@ function calculatePrice(product) {
             resolve({price: (ingredientsPrice!==0?ingredientsPrice:calcPrice), ingredients: ingredientsWithPrice.join(", ")||'Ei ainesosia'});
         }).catch(err => {reject(err)});
     })
+}
+
+function convertStateToOrderBody(state) {
+    let model = {
+        orderItems: [],
+        deliveryContact: state.contact,
+        buyerId: state.buyerId,
+        deliveryType: state.deliveryType,
+        hasPhoneOrderFee: false,
+        hotspotId: state.hotspotId,
+        orderID: state.orderId,
+        preOrderTime: state.preOrderTime,
+        promotionCodes: [],
+        redirectToOrderTracking: state.redirectToOrderTracking,
+        redirectUrl: "https://www.kotipizza.fi/tilaus/tulos",
+        paymentMethod: undefined,
+        shopId: state.shop.restaurantId
+    }
+    state.orderItems.forEach(item => {
+        let itemModel = {
+            additionalText: "Tilattu Testauspizzan kautta",
+            productId: item.product.productID,
+            quantity: 1,
+            sizeId: item.size.productSizeID,
+            ingredients: []
+        }
+        item.ingredients.forEach(ingredient => {
+            itemModel.ingredients.push({ingredientId: ingredient.id, dosingId: ingredient.dosingId, quantity: 1});
+        })
+        model.orderItems.push(itemModel);
+    });
+    return model;
 }
 
 function capitalizeFirstLetter(string) {
@@ -94,14 +136,25 @@ const templates = {
     ingredientCommands: global.ingredientCommands,
     continueShopping: "Voit jatkaa muiden tuotteiden lisäystä, listata ostoskorin komennolla `!cart`, poista tuote ostoskorista komennolla `!rs <numero>` tai jatkaa kassaan komennolla `!order`",
     cartCommands: "Ostoskorista voi poistaa tuotteen komennolla `!rs <numero>`",
-    orderingGuide: "Haluatko kuljetusta, syötkö Kotipizzan ravintolassa vai haluatko toimitusta?\nVastaa (nouto, ravintola tai toimitus)",
+    orderingGuide: "Haluatko kuljetusta, syötkö Kotipizzan ravintolassa vai haluatko kuljetusta?\nVastaa (nouto, ravintola tai kuljetus)",
     locationNotFound: "🤔 Osoitteela ei löytynyt mitään. Kokeile uudelleen toisella hakusanalla.",
     osmNote: "Testauspizza | © OpenStreetMapin tekijät",
     searching: "🔎 Haetaan...",
     searchShop: "🔎 Hae Kotipizza ravintola syöttämällä hakusana:",
     searchNearestShop: "🔎 Haetaan lähimmät ravintolat...",
     enterDeliveryAddress: "🗺️ Syötä toimitusosoite muodossa (<Osoite>, <Postinumero>, <Kaupunki>)",
-    invalidAddressFormat: "Osoitteen muoto ei ole oikein. Oikea muoto: <Osoite>, <Postinumero>, <Kaupunki>"
+    invalidAddressFormat: "Osoitteen muoto ei ole oikein. Oikea muoto: <Osoite>, <Postinumero>, <Kaupunki>",
+    selectLocation: "Valitse ravintola komennolla `!select <numero>`.",
+    noPickupLocationForDelivery: "⚠️Osoitteelle ei löytynyt noutoravintoloita. Aloita tilaus uudelleen komennolla `!order` ja valitse nouto tai ravintolassa syöminen.",
+    invalidDelType: "Väärä toimitustapa, ",
+    delOptions: "Haluatko tilata heti vai tehdä ennakkotilauksen?\nVastaa `heti` tai `ennakkotilaus`.",
+    contactInfo: {
+        name: "Syötä etunimesi:",
+        surname: "Syötä sukunimesi:",
+        email: "Syötä sähköpostiosoitteesi:",
+        phone: "Syötä puhelinnumerosi:"
+    },
+    orderNeedsPayment: "Tilauksesi on tehty. Siirry maksamaan haluamasi maksutavalla. Sinut uudelleenohjataan tilauksenseurantasivulle."
 }
 
 const constants = {
@@ -110,6 +163,10 @@ const constants = {
         delivery: "delivery",
         pickup: "pickup",
         hotStop: "hotspot"
+    },
+    timings: {
+        now: 'now',
+        ennakkotilaus: 'time_selection'
     }
 }
 
@@ -120,5 +177,7 @@ module.exports = {
     calculatePrice,
     constants,
     capitalizeFirstLetter,
-    getRestaurantLink
+    getRestaurantLink,
+    defaultContact,
+    convertStateToOrderBody
 }

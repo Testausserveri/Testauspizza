@@ -121,6 +121,20 @@ function getShops() {
     })
 }
 
+function getShopsWithOpenFlags(ids) {
+    return new Promise((resolve, reject) => {
+        http.get(config.eComBaseUrl+"/webshop/v1/restaurants?includeOpenFlags=true&ids="+ids.join(","), res => {
+            if (res.statusCode === 200) {
+                resolve(res.body);
+            } else {
+                reject("Response code "+res.statusCode);
+            }
+        }, err => {
+            reject(err);
+        })
+    })
+}
+
 function getPopularProducts() {
     return new Promise((resolve, reject) => {
         http.get(config.baseUrl+"/api/v2/popular/", res => {
@@ -208,5 +222,6 @@ module.exports = {
     getProduct,
     search,
     getPrice,
-    getNearbyShops
+    getNearbyShops,
+    getShopsWithOpenFlags
 }

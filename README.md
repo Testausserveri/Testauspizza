@@ -9,5 +9,5 @@ Testauspizza is a discord bot for ordering pizza from kotipizza.fi
 - [x] Add to "shopping cart"
 - [x] View shopping cart
 - [x] Remove product from shopping cart
-- [ ] Collect delivery and buyer information
-- [ ] Order 🍕!
+- [x] Collect delivery and buyer information
+- [x] Order 🍕!

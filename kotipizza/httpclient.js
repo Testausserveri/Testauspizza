@@ -8,7 +8,7 @@ const config = {
 }
 
 function post(url, data, response, error) {
-    needle.post(url, data, config, function (err, resp) {
+    needle.post(url, data, {json: true, headers: {...config.headers, AuthToken: global.config.apiKey}}, function (err, resp) {
         if (err) {
             error(err);
             return;
