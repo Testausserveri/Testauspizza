@@ -1,13 +1,9 @@
 # 🍕 Testauspizza
 Testauspizza is a discord bot for ordering pizza from kotipizza.fi
 
+### Warning! UNSTABLE
+`main` branch contains unstable code for upcoming 1.1 release, use `1.0` for stable version
+
 ## To-Do
 
-- [x] Initialize order
-- [x] Search and select products, cancel order and view popular products
-- [x] View, add, remove and search ingredients
-- [x] Add to "shopping cart"
-- [x] View shopping cart
-- [x] Remove product from shopping cart
-- [x] Collect delivery and buyer information
-- [x] Order 🍕!
+- [ ] Convert old crude command-based UI to discord interactions with selectable menus and buttons 
