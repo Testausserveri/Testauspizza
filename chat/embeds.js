@@ -2,81 +2,42 @@ const api = require('../kotipizza/api');
 const Discord = require("discord.js");
 const utils = require('./utils');
 const apiConfig = require('../kotipizza/config');
+const {MessageActionRow, MessageSelectMenu} = require("discord.js");
 
-function popularProducts() {
-    return new Promise((resolve, reject) => {
-        api.getPopularProducts().then(products => {
-            let embedProducts = [];
-            products.forEach(item => {
-                embedProducts.push({name: item.name+" ("+item.productID+")", value: item.description});
-            });
-            let popularEmbed = new Discord.MessageEmbed()
-                .setColor('#4bc601')
-                .setTitle('Suosituimmat ateriat')
-                .addFields(embedProducts);
-            resolve(popularEmbed);
-        }).catch(err => {reject(err)});
-    });
-}
-
-function product(id, thumbnail=false) {
-    return new Promise((resolve, reject) => {
-        api.getProduct(id).then(product => {
-            if (product === undefined) {
-                resolve(undefined);
-                return;
-            }
-            let sizes = product.productSizes.map(item => {return item.name+" ("+item.productSizeID+")"+(item.calculatedPrice ? " "+item.calculatedPrice+"€" : "")}).join(", ");
-            let popularEmbed = new Discord.MessageEmbed()
-                .setColor('#4bc601')
-                .setThumbnail(thumbnail ? product.imagepath : undefined)
-                .setImage(!thumbnail ? product.imagepath : undefined)
-                .setTitle(product.name)
-                .addField("Kuvaus", product.description)
-                .addField("Numero", product.productID)
-                .addField("Hinta", (product.hasMinimumPrice ? "alk. " : "")+product.price+"€")
-                .addField("Mausteinen", product.isSpicy ? "Kyllä" : "Ei")
-                .addField("Koot", sizes)
-            resolve({popularEmbed, product});
-        }).catch(err => {reject(err)});
-    });
-}
-
-function addedProduct(product, index) {
-    return new Promise((resolve, reject) =>  {
-        utils.calculatePrice(product).then(price => {
-            let embed = new Discord.MessageEmbed()
-                .setColor('#4bc601')
-                .setThumbnail(product.product.imagepath)
-                .setTitle(product.product.name)
-                .addField("Kuvaus", product.product.description)
-                .addField("Numero", index+1)
-                .addField("Ainesosat", price.ingredients)
-                .addField("Alustava hinta", (product.product.hasMinimumPrice ? "alk. " : "")+product.product.price+"€")
-                .addField("Hinta (+ ainesosat)", price.price+"€")
-                .addField("Mausteinen", product.product.isSpicy ? "Kyllä" : "Ei")
-                .addField("Koko", product.size.name+" ("+product.size.productSizeID+")"+(product.size.calculatedPrice ? " "+product.size.calculatedPrice+"€" : ""));
-            resolve({embed, price: price.price});
-        }).catch(err => {reject(err);})
-    });
-}
-
-function selectedIngredients(list) {
+function selectedIngredientsPicker(list) {
     return new Promise((resolve, reject) => {
         let ingredientFields = [];
         api.getIngredients().then(ingredients => {
             list.forEach(listItem => {
                 ingredients.forEach(item => {
                     if (listItem.id === item.ingredientID) {
-                        ingredientFields.push({name: '('+item.ingredientID+') '+item.name, value: item.summaryDescription || item.description});
+                        ingredientFields.push({label: item.name, description: (item.summaryDescription || item.description).substr(0, 99), value: item.ingredientID.toString()});
                     }
                 })
             });
-            let ingredientsEmbed = new Discord.MessageEmbed()
-                .setColor('#4bc601')
-                .setTitle("Valitut ainesosat")
-                .addFields(ingredientFields);
-            resolve(ingredientsEmbed);
+            resolve(new MessageActionRow()
+                .addComponents(
+                    new MessageSelectMenu()
+                        .setCustomId('selectDeletableIngredient')
+                        .setPlaceholder('Valitse')
+                        .addOptions(ingredientFields),
+                ));
+        }).catch(err => {reject(err);});
+    });
+}
+
+function ingredientsPicker() {
+    return new Promise((resolve, reject) => {
+        api.getIngredients().then(ingredients => {
+            let ingredientFields = ingredients.map(item => {return {label: (item.name || "Ei kuvausta").substr(0, 99), description: (item.summaryDescription || item.description || "Ei saatavilla").substr(0, 99), value: item.ingredientID.toString()}})
+            console.log(ingredientFields[0]);
+            resolve(new MessageActionRow()
+                .addComponents(
+                    new MessageSelectMenu()
+                        .setCustomId('selectAddableIngredient')
+                        .setPlaceholder('Valitse')
+                        .addOptions(ingredientFields.splice(0, 25)),
+                ));
         }).catch(err => {reject(err);});
     });
 }
@@ -162,12 +123,10 @@ function paymentMethodsEmbed(order) {
 }
 
 module.exports = {
-    popularProducts,
-    product,
-    selectedIngredients,
     ingredients,
     ingredientCategories,
-    addedProduct,
     shopEmbed,
-    paymentMethodsEmbed
+    paymentMethodsEmbed,
+    selectedIngredientsPicker,
+    ingredientsPicker
 }

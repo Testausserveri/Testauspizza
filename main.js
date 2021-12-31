@@ -1,8 +1,7 @@
-
 const Discord = require("discord.js");
 const config = require("./config.json");
 const cmdReader = require("./chat/handler")
-const client = new Discord.Client();
+const client = new Discord.Client({intents: []});
 const db = require('./db/db');
 
 const dataBase = new db.Database(config.db.dbname, config.db.username, config.db.password, config.db.host);
@@ -18,22 +17,26 @@ client.on("message", function (message) {
     }
 });
 
+client.on('interactionCreate', interaction => {
+    if (config.debug)
+        console.log(interaction);
+    cmdReader.onInteraction(interaction, dataBase);
+});
 
-console.log("Connecting to Database");
-dataBase.connect().then(function () {
+(async function() {
+    console.log("Connecting to Database");
+    await dataBase.connect();
     console.log("DB connected");
     console.log("Connecting to Discord");
-    client.login(config.token).then(function () {
-        console.log("Bot connected!");
-        console.log("Setting status");
-        client.user.setActivity({
-            type: 'PLAYING',
-            name: 'kotipizza.fi'
-        });
-    }).catch(function (reason) {
-        console.log("Connection failed");
-        console.log(reason);
+    await client.login(config.token);
+    console.log("Bot connected!");
+    console.log("Setting status");
+    client.user.setActivity({
+        type: 'PLAYING',
+        name: 'kotipizza.fi'
     });
-});
+    console.log("Setting commands...");
+    await client.application.commands.set(cmdReader.interactionCommands);
+})();
 
 

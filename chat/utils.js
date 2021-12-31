@@ -59,7 +59,7 @@ function calculatePrice(product) {
                         if (ingredientDosing.length > 0) {
                             ingredientDosing = ingredientDosing[0];
                             ingredientsPrice += ingredientDosing.priceWithVAT;
-                            ingredientsWithPrice.push('('+lIngredient.ingredientID+') '+lIngredient.name+`, ${ingredientDosing.priceWithVAT}€`)
+                            ingredientsWithPrice.push(lIngredient.name+`, ${ingredientDosing.priceWithVAT}€`)
                         }
                     }
                 })
@@ -114,15 +114,16 @@ function getRestaurantLink(shop) {
 
 const global = {
     selectSize: "Valitse koko komennolla `!size <numero>`. Jos haluat nähdä valitun pizzan, kirjoita komento `!pizza`.",
-    sessionCommands: "Voit hakea tuotteita komennolla `!search hakusana`, valita pizzan komennolla `!select <pizzanumero>`, ja perua tilauksen komennolla `!cancel`.\nSuosituimmat pizzat saat komennolla `!popular`\nListaa ostoskori komennolla `!cart`, poista tuote ostoskorista komennolla `!rs <numero>`\nKun olet valinnut tuotteet, siirry tilaamaan komennolla `!order`",
+    sessionCommands: "Voit hakea tuotteita komennolla `/search`, valita pizzan komennolla `/select`, ja perua tilauksen komennolla `/cancel`.\nSuosituimmat pizzat saat komennolla `/popular`\nListaa ostoskori komennolla `/cart`, poista tuote ostoskorista komennolla `/rs`\nKun olet valinnut tuotteet, siirry tilaamaan komennolla `/order`",
     ingredientCommands: "Voit poistaa ainesosan komennolla `!ri <numero>`, lisätä ainesosan `!ai <numero>`\nhakea ainesosia `!si <hakusana>` (halutessasi voit lisätä kategorian tähän)\nlistata kategoriat komennolla `!ki`\nja listata valitut ainesosat komennolla `!li`\nKun olet valmis/et halua valita lisäainesosia, syötä komento `!add` lisätäksesi tuotteen listalle."
 }
 
 const templates = {
     error: "😢 Jokin meni pieleen, yritä myöhemmin uudelleen",
-    startSession: "Aloita tilaus komennolla !pizza",
+    startSession: "Aloita tilaus komennolla /pizza",
     welcome: "**Tervetuloa!**\n"+global.sessionCommands,
     done: "👍",
+    selectDeletableCartItem: "Valitse poistettava tuote",
     sessionCommands: global.sessionCommands,
     productNotFound: "Tuotetta ei löytynyt. Syötitkö väärän numeron?",
     sizeNotFound: "Kokonumero on virheellinen. Syötitkö väärän numeron?",
@@ -132,10 +133,10 @@ const templates = {
     noProductSelected: "Et ole valinnut tuotteita. Valitse tuote komennolla `!select <numero>`",
     selectSize: global.selectSize,
     noSizeSelected: "Et ole valinnut kokoa. "+global.selectSize,
-    welcomingIngredientCommands: "Yllä näet valitut ainesosat.\n"+global.ingredientCommands,
+    welcomingIngredientCommands: "Yllä näet valitut ainesosat.\n",
     ingredientCommands: global.ingredientCommands,
     continueShopping: "Voit jatkaa muiden tuotteiden lisäystä, listata ostoskorin komennolla `!cart`, poista tuote ostoskorista komennolla `!rs <numero>` tai jatkaa kassaan komennolla `!order`",
-    cartCommands: "Ostoskorista voi poistaa tuotteen komennolla `!rs <numero>`",
+    cartCommands: "Ostoskorista voi poistaa tuotteen komennolla `/poistakori`",
     orderingGuide: "Haluatko kuljetusta, syötkö Kotipizzan ravintolassa vai haluatko kuljetusta?\nVastaa (nouto, ravintola tai kuljetus)",
     locationNotFound: "🤔 Osoitteela ei löytynyt mitään. Kokeile uudelleen toisella hakusanalla.",
     osmNote: "Testauspizza | © OpenStreetMapin tekijät",

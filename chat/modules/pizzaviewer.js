@@ -1,19 +1,16 @@
-const embeds = require('../embeds');
+const productEmbeds = require('../embeds/product');
 const utils = require('../utils');
 
-function handle(state, msg, client, db) {
-    msg.channel.startTyping();
-    embeds.product(state.temp.currentProduct.productID).then(result => {
+function handle(state, interaction, db) {
+    productEmbeds.product(state.temp.currentProduct.productID, state, interaction, db).then(result => {
         if (result === undefined) {
-            msg.channel.send(utils.templates.error)
+            interaction.reply(utils.templates.error)
         } else {
-            msg.channel.send(result.popularEmbed)
+            interaction.reply(result.popularEmbed)
         }
-        msg.channel.stopTyping();
     }).catch(err => {
-        msg.channel.stopTyping();
         console.error(err);
-        msg.channel.send(utils.templates.error);
+        interaction.reply(utils.templates.error);
     });
 }
 

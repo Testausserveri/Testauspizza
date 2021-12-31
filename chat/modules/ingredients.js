@@ -2,39 +2,26 @@ const embeds = require('../embeds');
 const utils = require('../utils');
 const api = require('../../kotipizza/api');
 
-function list(state, msg, client, db) {
-    embeds.selectedIngredients(state.temp.ingredients).then(embed => {
-        msg.channel.send(embed);
-    }).catch(err => {
-        console.error(err);
-        msg.channel.send(utils.templates.error);
-    });
+async function list(state, interaction, onlyResult=false) {
+    let embed = await embeds.selectedIngredients(state.temp.ingredients);
+    if (!onlyResult)
+        interaction.reply(embed);
+    else
+        return embed;
 }
 
-function remove(state, msg, client, db) {
-    let split = msg.content.split(" ");
-    if (split.length > 1) {
-        let id = parseInt(split[1]);
-        if (!isNaN(id)) {
-            let filteredList = state.temp.ingredients.filter(item => {return item.id === id});
-            if (filteredList.length === 1) {
-                state.temp.ingredients = state.temp.ingredients.filter(item => {
-                    return item.id !== id
-                });
-                msg.channel.startTyping();
-                db.updateUser(msg.author.id, state).then(() => {
-                    msg.channel.stopTyping();
-                    msg.channel.send(utils.templates.done);
-                }).catch(err => {
-                    console.error(err);
-                    msg.channel.stopTyping();
-                    msg.channel.send(utils.templates.error);
-                })
-                return;
-            }
+async function remove(state, interaction, db) {
+    let split = interaction.values;
+    let id = parseInt(split[0]);
+    if (!isNaN(id)) {
+        let filteredList = state.temp.ingredients.filter(item => {return item.id === id});
+        if (filteredList.length === 1) {
+            state.temp.ingredients = state.temp.ingredients.filter(item => {
+                return item.id !== id
+            });
+            await db.updateUser(interaction.user.id, state)
         }
     }
-    msg.channel.send(utils.templates.ingredientNotFound);
 }
 
 function add(state, msg, client, db) {
@@ -157,10 +144,22 @@ function categories(state, msg, client, db) {
     });
 }
 
+async function deletePrompt(state, interaction) {
+    let picker = await embeds.selectedIngredientsPicker(state.temp.ingredients);
+    interaction.reply({content: "Valitse poistettava ainesosa", components: [picker]})
+}
+
+async function addPrompt(state, interaction) {
+    let picker = await embeds.ingredientsPicker();
+    interaction.reply({content: "Valitse ainesosa", components: [picker]})
+}
+
 module.exports = {
     categories,
     search,
     add,
     remove,
-    list
+    list,
+    deletePrompt,
+    addPrompt
 }

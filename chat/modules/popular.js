@@ -1,15 +1,10 @@
-const embeds = require('../embeds');
-const utils = require('../utils');
+const embeds = require('../embeds/product');
 
-function handle(state, msg, client, db) {
-    msg.channel.startTyping();
+function handle(state, interaction) {
     embeds.popularProducts().then(embed => {
-        msg.channel.send(embed);
-        msg.channel.stopTyping();
+        interaction.reply({ embeds: [ embed.popularEmbed ], components: [embed.row] });
     }).catch(err => {
-        msg.channel.stopTyping();
         console.error(err);
-        msg.channel.send(utils.templates.error);
     })
 }
 

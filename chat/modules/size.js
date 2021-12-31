@@ -1,48 +1,32 @@
-const embeds = require('../embeds');
 const utils = require('../utils');
+const api = require('../../kotipizza/api');
+const {showIngredientsCard} = require("../embeds/ingredients");
 
-function handle(state, msg, client, db) {
-    let split = msg.content.split(" ");
-    if (split.length > 1) {
-        let id = parseInt(split[1]);
-        if (!isNaN(id)) {
-            msg.channel.startTyping();
-            embeds.product(state.temp.currentProduct.productID).then(result => {
-                if (result === undefined) {
-                    msg.channel.send(utils.templates.error)
-                } else {
-                    result = result.product;
-                    let sizes = result.productSizes.filter(size => {return size.productSizeID === id;});
-                    if (sizes.length > 0) {
-                        state.temp.currentSize = sizes[0];
-                        state.temp.ingredients = [...state.temp.currentSize.ingredients]
-                        db.updateUser(msg.author.id, state).then(() => {
-                            msg.channel.send(utils.templates.done);
-                            embeds.selectedIngredients(state.temp.ingredients).then(embed => {
-                                msg.channel.send(embed);
-                                msg.channel.send(utils.templates.welcomingIngredientCommands);
-                            }).catch(err => {
-                                console.error(err);
-                                msg.channel.send(utils.templates.error);
-                            });
-                        }).catch(err => {
-                            console.error(err);
-                            msg.channel.send(utils.templates.error);
-                        })
-                    } else {
-                        msg.channel.send(utils.templates.sizeNotFound);
-                    }
+function handle(state, interaction, db) {
+    let split = interaction.values;
+    let id = parseInt(split[0]);
+    console.log(id);
+    if (!isNaN(id)) {
+        api.getProduct(state.temp.currentProduct.productID).then(result => {
+            if (result === undefined) {
+                interaction.reply(utils.templates.error)
+            } else {
+                console.log(result);
+                let sizes = result.productSizes.filter(size => {return size.productSizeID === id;});
+                if (sizes.length > 0) {
+                    state.temp.currentSize = sizes[0];
+                    state.temp.ingredients = [...state.temp.currentSize.ingredients]
+                    db.updateUser(interaction.user.id, state).then(() => {
+                        showIngredientsCard(state, interaction)
+                    }).catch(err => {
+                        console.error(err);
+                    })
                 }
-                msg.channel.stopTyping();
-            }).catch(err => {
-                msg.channel.stopTyping();
-                console.error(err);
-                msg.channel.send(utils.templates.error);
-            });
-            return;
-        }
+            }
+        }).catch(err => {
+            console.error(err);
+        });
     }
-    msg.channel.send(utils.templates.sizeNotFound);
 }
 
 module.exports = {

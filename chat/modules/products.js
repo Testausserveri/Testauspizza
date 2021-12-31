@@ -1,76 +1,80 @@
 const utils = require('../utils');
-const embeds = require('../embeds');
+const productEmbeds = require('../embeds/product');
 const api = require('../../kotipizza/api');
 const {AsyncIterator} = require("../../utils/iterator");
+const {MessageActionRow, MessageButton, CommandInteraction, MessageSelectMenu} = require("discord.js");
 
-function search(state, msg, client, db) {
-    let split = msg.content.split(" ");
-    if (split.length > 1) {
-        let query = split[1];
-        if (query.length >= 3) {
-            msg.channel.startTyping();
-            api.search(query).then(searchResults => {
-                if (searchResults.products) {
-                    if (searchResults.products.results.length > 0) {
-                        searchResults.products.results.splice(0, 10).forEach(item => {
-                            embeds.product(item.productID, true).then(embed => {
-                                if (embed === undefined) {
-                                    msg.channel.send(utils.templates.error);
-                                    return;
-                                }
-                                msg.channel.send(embed.popularEmbed);
-                            })
-                        });
-                    } else {
-                        msg.channel.send(utils.templates.searchNotFound);
+/**
+ *
+ * @param state
+ * @param interaction {CommandInteraction}
+ * @param db
+ */
+function search(state, interaction, db) {
+    let query = interaction.options.getString('hakusana');
+    if (query.length >= 3) {
+        api.search(query).then(async searchResults => {
+            if (searchResults.products) {
+                if (searchResults.products.results.length > 0) {
+                    let embedList = [];
+                    let selectableItems = [];
+                    for (let item of searchResults.products.results.splice(0, 10)) {
+                        let embed = await productEmbeds.product(item.productID, state, interaction, db, true);
+                        if (embed === undefined) {
+                            console.log("undefined!");
+                            return;
+                        }
+                        embedList.push(embed.popularEmbed);
+                        selectableItems.push({label: embed.product.name.substr(0, 99), description: embed.product.description.substr(0, 99), value: embed.product.productID.toString()});
                     }
+                    console.log(selectableItems);
+                    let actionRow = new MessageActionRow()
+                        .addComponents(
+                            new MessageSelectMenu()
+                                .setCustomId('selectPopular')
+                                .setPlaceholder('Valitse')
+                                .addOptions(selectableItems),
+                        )
+                    interaction.reply({content: 'Hakutulos:', embeds: embedList, components: [actionRow]});
                 } else {
-                    msg.channel.send(utils.templates.error);
+                    interaction.reply(utils.templates.searchNotFound);
                 }
-                msg.channel.stopTyping();
-            }).catch(err => {
-                msg.channel.stopTyping();
-                console.error(err);
-                msg.channel.send(utils.templates.error);
-            });
-            return;
-        }
+            }
+        }).catch(err => {
+            console.error(err);
+        });
+        return;
     }
-    msg.channel.send(utils.templates.invalidQuery);
+    interaction.reply(utils.templates.invalidQuery);
 }
 
-function select(state, msg, client, db) {
-    let split = msg.content.split(" ");
-    if (split.length > 1) {
-        let id = parseInt(split[1]);
-        if (!isNaN(id)) {
-            msg.channel.startTyping();
-            embeds.product(id).then(result => {
-                msg.channel.stopTyping();
-                if (result !== undefined) {
-                    state.temp = utils.defaultTemp();
-                    state.temp.currentProduct = result.product;
-                    msg.channel.startTyping();
-                    db.updateUser(msg.author.id, state).then(() => {
-                        msg.channel.stopTyping();
-                        msg.channel.send(result.popularEmbed);
-                        msg.channel.send("Tuote on valittu. Valitse pizzan koko komennolla `!size <numero>` tai peru valinta komennolla `!deselect`")
-                    }).catch(err => {
-                        msg.channel.stopTyping();
-                        console.error(err);
-                        msg.channel.send(utils.templates.error);
-                    })
-                } else
-                    msg.channel.send(utils.templates.productNotFound);
-            }).catch(err => {
-                msg.channel.stopTyping();
-                console.error(err);
-                msg.channel.send(utils.templates.error);
-            })
-            return;
-        }
+function select(state, interaction, db) {
+    let split = interaction.values;
+    let id = parseInt(split[0]);
+    if (!isNaN(id)) {
+        productEmbeds.product(id, state, interaction, db).then(result => {
+            if (result !== undefined) {
+                state.temp = utils.defaultTemp();
+                state.temp.currentProduct = result.product;
+                db.updateUser(interaction.user.id, state).then(() => {
+                    let msgPayload = {components: [result.sizesRow]};
+                    if (result.content) {
+                        msgPayload.content = result.content;
+                    } else {
+                        msgPayload.embeds = [result.popularEmbed];
+                    }
+                    console.log(msgPayload);
+                    interaction.reply(msgPayload);
+                }).catch(err => {
+                    console.error(err);
+                    interaction.reply(utils.templates.error);
+                })
+            } else
+                interaction.reply(utils.templates.productNotFound);
+        }).catch(err => {
+            console.error(err);
+        })
     }
-    msg.channel.send(utils.templates.productNotFound);
 }
 
 function deselect(state, msg, client, db) {
@@ -88,74 +92,45 @@ function deselect(state, msg, client, db) {
     }
 }
 
-function add(state, msg, client, db) {
-    if (state.temp.currentProduct !== undefined && state.temp.currentSize !== undefined) {
-        state.orderItems.push({product: state.temp.currentProduct, size: state.temp.currentSize, ingredients: state.temp.ingredients});
-        state.temp = utils.defaultTemp();
-        db.updateUser(msg.author.id, state).then(() => {
-            msg.channel.send(utils.templates.done);
-            msg.channel.send(utils.templates.continueShopping);
-        }).catch(err => {
-            console.error(err);
-            msg.channel.send(utils.templates.error);
-        })
-    } else if (!state.temp.currentProduct) {
-        msg.channel.send(utils.templates.noProductSelected)
-    } else if (!state.temp.currentSize) {
-        msg.channel.send(utils.templates.noSizeSelected)
-    }
-}
 
-function list(state, msg, client, db) {
-    msg.channel.send("**Tuotteet:**");
+
+function list(state, interaction) {
     let iterator = new AsyncIterator(undefined, undefined, state.orderItems);
     let total = 0;
-    msg.channel.startTyping();
+    let prodEmbeds = [];
     iterator.callback = (item, index) => {
-        embeds.addedProduct(item, index).then(embed => {
-            msg.channel.send(embed.embed);
+        productEmbeds.addedProduct(item, index).then(embed => {
+            prodEmbeds.push(embed.embed);
             total += embed.price;
             iterator.nextItem();
         }).catch(err => {
-            msg.channel.stopTyping();
             console.error(err);
-            msg.channel.send(utils.templates.error);
         })
     }
     iterator.endCallback = () => {
-        msg.channel.send("Yhteensä: **"+total+"€**\n\n")
-        msg.channel.send('_'+utils.templates.cartCommands+'_')
-        msg.channel.stopTyping();
+        interaction.reply({content: "**Tuotteet**\nYhteensä: **"+total+"€**\n\n", embeds: prodEmbeds, components: [
+                new MessageActionRow()
+                    .addComponents(
+                        new MessageButton()
+                            .setCustomId('order')
+                            .setLabel('Siirry tilaukseen')
+                            .setDisabled(state.orderItems.length < 1)
+                            .setStyle('PRIMARY'),
+                        new MessageButton()
+                            .setCustomId('removeCart')
+                            .setDisabled(state.orderItems.length < 1)
+                            .setLabel('Poista tuote ostoskorista')
+                            .setStyle('PRIMARY'),
+                    )
+            ]})
     }
     iterator.nextItem();
 }
 
-function remove(state, msg, client, db) {
-    let split = msg.content.split(" ");
-    if (split.length > 1) {
-        let id = parseInt(split[1]);
-        if (!isNaN(id)) {
-            id = id-1;
-            if (typeof state.orderItems[id] !== 'undefined') {
-                state.orderItems.splice(id, 1);
-                db.updateUser(msg.author.id, state).then(() => {
-                    msg.channel.send(utils.templates.done);
-                }).catch(err => {
-                    console.error(err);
-                    msg.channel.send(utils.templates.error);
-                })
-                return;
-            }
-        }
-    }
-    msg.channel.send(utils.templates.productNotFound);
-}
 
 module.exports = {
     search,
     select,
     deselect,
-    add,
     list,
-    remove
 }
