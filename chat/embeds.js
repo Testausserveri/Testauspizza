@@ -30,7 +30,6 @@ function ingredientsPicker() {
     return new Promise((resolve, reject) => {
         api.getIngredients().then(ingredients => {
             let ingredientFields = ingredients.map(item => {return {label: (item.name || "Ei kuvausta").substr(0, 99), description: (item.summaryDescription || item.description || "Ei saatavilla").substr(0, 99), value: item.ingredientID.toString()}})
-            console.log(ingredientFields[0]);
             resolve(new MessageActionRow()
                 .addComponents(
                     new MessageSelectMenu()
@@ -85,10 +84,8 @@ function shopEmbed(shop, deliveryType) {
     ];
     if (deliveryType === utils.constants.deliveryTypes.delivery)
         fields.push({name: 'Kuljetusmaksu', value: `${shop.dynamicDeliveryFee ? 'Dynaaminen hinta, ': ''}${shop.dynamicDeliveryFee || shop.deliveryFee}€`});
-    if (!shop['openFor'+utils.capitalizeFirstLetter(deliveryType.toLowerCase())]) {
+    if (shop['openFor'+utils.capitalizeFirstLetter(deliveryType.toLowerCase()+"Status")] !== "OPEN") {
         fields.push({name: '**Kiinni**', value: `[Aukioloajat](${utils.getRestaurantLink(shop)})`})
-    } else {
-        fields.push({name: 'Numero', value: shop.restaurantId});
     }
     return new Discord.MessageEmbed()
         .setColor('#4bc601')
@@ -122,11 +119,24 @@ function paymentMethodsEmbed(order) {
     return fields;
 }
 
+function paymentMethodURLs(order) {
+    let fields = [];
+    if (order.cashPaymentEnabled) {
+        fields.push({id: "kateinen", name: "Käteinen", category: "Maksu noutaessa", url: apiConfig.getCODPaymentLink(order.orderKey, order.orderID)})
+    }
+    order.paymentMethodsV2.forEach(method => {
+        if (method.url)
+            fields.push({id: method.id+method.name, name: method.name, category: utils.resolvePaymentGroupName(method), url: buildMethodPaymentUrl(method)})
+    });
+    return fields;
+}
+
 module.exports = {
     ingredients,
     ingredientCategories,
     shopEmbed,
     paymentMethodsEmbed,
     selectedIngredientsPicker,
-    ingredientsPicker
+    ingredientsPicker,
+    paymentMethodURLs
 }

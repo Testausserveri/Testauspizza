@@ -11,6 +11,7 @@ const ingredientsEmbeds = require('./embeds/ingredients');
 const {Interaction} = require("discord.js");
 const {Database} = require('../db/db');
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const {feelingLucky} = require("./modules/lucky");
 
 const interactionCommands = [
     {
@@ -20,6 +21,10 @@ const interactionCommands = [
     {
         name: 'popular',
         description: 'Listaa suositut tuotteet'
+    },
+    {
+        name: 'feelinglucky',
+        description: 'Testaa onneasi ja anna Testauspizzan valita pizzan puolestaso!'
     },
     {
         name: 'cart',
@@ -42,64 +47,9 @@ const interactionCommands = [
 function onMessage(msg, client, db) {
     db.getUserOrCreate(msg.author.id).then(state => {
         state = state.state;
-        if (state.state === undefined) {
-            sessionModule.start(state, msg, client, db);
-        } else {
-            if (msg.content === "!cancel") {
-                sessionModule.stop(state, msg, client, db);
-                return;
-            }
+        if (state.state !== undefined) {
             switch (state.state) {
-                case "selection": {
-                    // Handle selections such as adding a new product
-                    if (msg.content === "!popular") {
-                        popularModule.handle(state, msg, client, db);
-                    } else if (msg.content.startsWith("!select ")) {
-                        productsModule.select(state, msg, client, db);
-                    } else if (msg.content === "!deselect") {
-                        productsModule.deselect(state, msg, client, db);
-                    } else if (msg.content === "!add") {
-                        productsActionsModule.add(state, msg, client, db);
-                    } else if (msg.content === "!cart") {
-                        productsModule.list(state, msg, client, db);
-                    } else if (msg.content.startsWith("!rs ")) {
-                        productsActionsModule.remove(state, msg, client, db);
-                    } else if (msg.content.startsWith("!search ")) {
-                        productsModule.search(state, msg, client, db);
-                    } else if (msg.content === "!pizza" && state.temp.currentProduct) {
-                        pizzaViewer.handle(state, msg, client, db);
-                    } else if (msg.content.startsWith("!size ") && state.temp.currentProduct && !state.temp.currentSize) {
-                        sizeModule.handle(state, msg, client, db);
-                    } else if (msg.content.startsWith("!ri ") && state.temp.currentProduct && state.temp.currentSize) {
-                        ingredientsModule.remove(state, msg, client, db);
-                    } else if (msg.content.startsWith("!ai ") && state.temp.currentProduct && state.temp.currentSize) {
-                        ingredientsModule.add(state, msg, client, db);
-                    } else if (msg.content.startsWith("!si ") && state.temp.currentProduct && state.temp.currentSize) {
-                        ingredientsModule.search(state, msg, client, db);
-                    } else if (msg.content === "!ki" && state.temp.currentProduct && state.temp.currentSize) {
-                        ingredientsModule.categories(state, msg, client, db);
-                    } else if (msg.content === "!li" && state.temp.currentProduct && state.temp.currentSize) {
-                        ingredientsModule.list(state, msg, client, db);
-                    } else if (msg.content === "!order" && state.orderItems && state.orderItems.length > 0) {
-                        orderModule.startOrder(state, msg, client, db);
-                    } else {
-                        if (state.temp.currentProduct === undefined)
-                            msg.channel.send(utils.templates.sessionCommands);
-                        else if (state.temp.currentSize === undefined)
-                            msg.channel.send(utils.templates.selectSize)
-                        else
-                            msg.channel.send(utils.templates.ingredientCommands);
-                    }
-                    break;
-                }
                 case 'ordering': {
-                    if (msg.content === "!order") {
-                        orderModule.startOrder(state, msg, client, db);
-                        return;
-                    } else if (msg.content.startsWith("!select ")) {
-                        orderModule.selectLocation(state, msg, client, db);
-                        return;
-                    }
                     orderModule.inputWhileOrder(state, msg, client, db);
                     break;
                 }
@@ -120,7 +70,8 @@ function onInteraction(interaction, db) {
     db.getUserOrCreate(interaction.user.id).then(async state => {
         state = state.state;
         if (state.state === undefined) {
-            sessionModule.start(state, interaction, db);
+            await sessionModule.start(state, interaction, db);
+            onInteraction(interaction, db);
         } else {
             if (interaction.isCommand()) {
                 if (interaction.commandName === "cancel") {
@@ -136,18 +87,13 @@ function onInteraction(interaction, db) {
                             productsModule.list(state, interaction, db);
                         } else if (interaction.commandName === "search") {
                             productsModule.search(state, interaction, db)
+                        } else if (interaction.commandName === "feelinglucky") {
+                            feelingLucky(state, interaction, db);
                         }
                         break;
                     }
                     case 'ordering': {
-                        if (msg.content === "!order") {
-                            orderModule.startOrder(state, msg, client, db);
-                            return;
-                        } else if (msg.content.startsWith("!select ")) {
-                            orderModule.selectLocation(state, msg, client, db);
-                            return;
-                        }
-                        orderModule.inputWhileOrder(state, msg, client, db);
+
                         break;
                     }
                 }
@@ -168,7 +114,14 @@ function onInteraction(interaction, db) {
                         break;
                     }
                     case 'ordering': {
-
+                        if (interaction.customId === "selectStore"  && interaction.values && !state.shop && state.deliveryType !== utils.constants.deliveryTypes.delivery) {
+                            orderModule.selectLocation(interaction.values[0], state, interaction, db);
+                            return;
+                        }
+                        if (interaction.customId === "selectPaymentMethod" && interaction.values && state.order) {
+                            orderModule.sendPaymentButton(state, interaction, db);
+                            return;
+                        }
                         break;
                     }
                 }
@@ -184,7 +137,7 @@ function onInteraction(interaction, db) {
                             productsActionsModule.add(state, interaction, db);
                         } else if (interaction.customId === "cart") {
                             productsModule.list(state, interaction, db);
-                        } else if (interaction.customId === "removeCart" && state.orderItems.length > 0) {
+                        } else if (interaction.customId === "removeCart" && state.orderItems && state.orderItems.length > 0) {
                             if (state.orderItems.length === 1) {
                                 // single item
                                 productsActionsModule.remove(state, interaction, db);
@@ -192,10 +145,27 @@ function onInteraction(interaction, db) {
                                 // Invoke picker
                                 productsActionsModule.removePicker(state, interaction, db);
                             }
+                        } else if (interaction.customId === "order" && state.orderItems && state.orderItems.length > 0) {
+                            orderModule.startOrder(state, interaction, db);
                         }
                         break;
                     }
                     case 'ordering': {
+                        if (!state.deliveryType) {
+                            if (interaction.customId === "deliveryNouto")
+                                state.deliveryType = utils.constants.deliveryTypes.pickup;
+                            else if (interaction.customId === "deliveryRavintola")
+                                state.deliveryType = utils.constants.deliveryTypes.eatInStore;
+                            else if (interaction.customId === "deliveryToimitus")
+                                state.deliveryType = utils.constants.deliveryTypes.delivery;
+                            else {
+                                return;
+                            }
+                            await db.updateUser(interaction.user.id, state);
+                            orderModule.afterDeliveryTypeSelection(state, interaction, db);
+                        } else {
+
+                        }
                         break;
                     }
                 }

@@ -1,12 +1,8 @@
 const utils = require('../utils');
 
-function start(state, interaction, db) {
+async function start(state, interaction, db) {
     state.state = "selection";
-    db.updateUser(interaction.user.id, state).then(() => {
-        interaction.reply(utils.templates.welcome);
-    }).catch(err => {
-        console.error(err);
-    });
+    await db.updateUser(interaction.user.id, state)
 }
 
 function stop(state, interaction, db) {

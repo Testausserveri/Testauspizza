@@ -21,13 +21,11 @@ function search(state, interaction, db) {
                     for (let item of searchResults.products.results.splice(0, 10)) {
                         let embed = await productEmbeds.product(item.productID, state, interaction, db, true);
                         if (embed === undefined) {
-                            console.log("undefined!");
                             return;
                         }
                         embedList.push(embed.popularEmbed);
                         selectableItems.push({label: embed.product.name.substr(0, 99), description: embed.product.description.substr(0, 99), value: embed.product.productID.toString()});
                     }
-                    console.log(selectableItems);
                     let actionRow = new MessageActionRow()
                         .addComponents(
                             new MessageSelectMenu()
@@ -48,9 +46,9 @@ function search(state, interaction, db) {
     interaction.reply(utils.templates.invalidQuery);
 }
 
-function select(state, interaction, db) {
+function select(state, interaction, db, id=undefined) {
     let split = interaction.values;
-    let id = parseInt(split[0]);
+    id = id === undefined ? parseInt(split[0]) : id;
     if (!isNaN(id)) {
         productEmbeds.product(id, state, interaction, db).then(result => {
             if (result !== undefined) {
@@ -63,7 +61,6 @@ function select(state, interaction, db) {
                     } else {
                         msgPayload.embeds = [result.popularEmbed];
                     }
-                    console.log(msgPayload);
                     interaction.reply(msgPayload);
                 }).catch(err => {
                     console.error(err);

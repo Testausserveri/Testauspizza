@@ -13,6 +13,7 @@ function product(id, state,interaction, db, thumbnail=false) {
             }
             let sizes = product.productSizes.map(item => {return {label: item.name.substr(0, 99), description: (item.calculatedPrice ? " "+item.calculatedPrice+"€" : ""), value: item.productSizeID.toString()}});
             const sizesRow = new MessageActionRow();
+            console.log(sizes, thumbnail);
             if (sizes.length === 1 && !thumbnail) {
                 state.temp.currentSize = product.productSizes[0];
                 state.temp.ingredients = [...state.temp.currentSize.ingredients];

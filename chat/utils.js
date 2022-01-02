@@ -137,7 +137,7 @@ const templates = {
     ingredientCommands: global.ingredientCommands,
     continueShopping: "Voit jatkaa muiden tuotteiden lisäystä, listata ostoskorin komennolla `!cart`, poista tuote ostoskorista komennolla `!rs <numero>` tai jatkaa kassaan komennolla `!order`",
     cartCommands: "Ostoskorista voi poistaa tuotteen komennolla `/poistakori`",
-    orderingGuide: "Haluatko kuljetusta, syötkö Kotipizzan ravintolassa vai haluatko kuljetusta?\nVastaa (nouto, ravintola tai kuljetus)",
+    orderingGuide: "Haluatko kuljetusta, syötkö Kotipizzan ravintolassa vai noudatko ravintolasta?",
     locationNotFound: "🤔 Osoitteela ei löytynyt mitään. Kokeile uudelleen toisella hakusanalla.",
     osmNote: "Testauspizza | © OpenStreetMapin tekijät",
     searching: "🔎 Haetaan...",
@@ -145,7 +145,7 @@ const templates = {
     searchNearestShop: "🔎 Haetaan lähimmät ravintolat...",
     enterDeliveryAddress: "🗺️ Syötä toimitusosoite muodossa (<Osoite>, <Postinumero>, <Kaupunki>)",
     invalidAddressFormat: "Osoitteen muoto ei ole oikein. Oikea muoto: <Osoite>, <Postinumero>, <Kaupunki>",
-    selectLocation: "Valitse ravintola komennolla `!select <numero>`.",
+    selectLocation: "Valitse ravintola",
     noPickupLocationForDelivery: "⚠️Osoitteelle ei löytynyt noutoravintoloita. Aloita tilaus uudelleen komennolla `!order` ja valitse nouto tai ravintolassa syöminen.",
     invalidDelType: "Väärä toimitustapa, ",
     delOptions: "Haluatko tilata heti vai tehdä ennakkotilauksen?\nVastaa `heti` tai `ennakkotilaus`.",
@@ -155,7 +155,8 @@ const templates = {
         email: "Syötä sähköpostiosoitteesi:",
         phone: "Syötä puhelinnumerosi:"
     },
-    orderNeedsPayment: "Tilauksesi on tehty. Siirry maksamaan haluamasi maksutavalla. Sinut uudelleenohjataan tilauksenseurantasivulle."
+    orderNeedsPayment: "Tilauksesi on tehty. Siirry maksamaan haluamasi maksutavalla. Sinut uudelleenohjataan tilauksenseurantasivulle.",
+    paymentMethod: "Maksu:"
 }
 
 const constants = {
@@ -168,7 +169,22 @@ const constants = {
     timings: {
         now: 'now',
         ennakkotilaus: 'time_selection'
+    },
+    paymentGroups: {
+        lunchcard: "Lounasetu",
+        onsite: "Maksu noutaessa",
+        giftcards: "Lahjakortit",
+        mobile: "Mobiilimaksu",
+        bank: "Verkkopankki",
+        creditcard: "Luottokortit"
     }
+}
+
+const resolvePaymentGroupName = (method) => {
+    if (constants.paymentGroups[method.group])
+        return constants.paymentGroups[method.group];
+    else
+        return "Maksutapa"
 }
 
 module.exports = {
@@ -180,5 +196,6 @@ module.exports = {
     capitalizeFirstLetter,
     getRestaurantLink,
     defaultContact,
-    convertStateToOrderBody
+    convertStateToOrderBody,
+    resolvePaymentGroupName
 }

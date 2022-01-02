@@ -1,25 +1,30 @@
 const utils = require('../utils');
 const embeds = require('../embeds');
+const commonEmbeds = require('../embeds/common');
 const api = require('../../kotipizza/api');
 const mapGen = require('osm-static-maps');
 const nominatimApi = require('../../nominatim/api');
+const {MessageActionRow, MessageSelectMenu, MessageButton} = require("discord.js");
 
-function startOrder(state, msg, client, db) {
+function startOrder(state, interaction, db) {
     state.state = "ordering";
     state.deliveryType = undefined;
     state.contact = utils.defaultContact();
     state.hotspotId = -1;
     state.shop = undefined;
-    msg.channel.startTyping();
-    db.updateUser(msg.author.id, state).then(() => {
-        msg.channel.stopTyping();
-        msg.channel.send("  **Tilaus**  ");
-        msg.channel.send(["->", utils.templates.orderingGuide].join(" "));
+    db.updateUser(interaction.user.id, state).then(() => {
+        interaction.reply(commonEmbeds.startOrderWithOptions);
     }).catch(err => {
-        msg.channel.stopTyping();
         console.error(err);
-        msg.channel.send(utils.templates.error);
     });
+}
+
+function afterDeliveryTypeSelection(state, interaction, db) {
+    if (state.deliveryType === utils.constants.deliveryTypes.delivery) {
+        interaction.reply(utils.templates.enterDeliveryAddress)
+    } else {
+        interaction.reply(utils.templates.searchShop);
+    }
 }
 
 function handleAfterDTypeSelection(state, msg, client, db) {
@@ -30,65 +35,66 @@ function handleAfterDTypeSelection(state, msg, client, db) {
     }
 }
 
-function selectLocation(state, msg, client, db) {
-    let split = msg.content.split(" ");
-    if (split.length > 1) {
-        let id = parseInt(split[1]);
-        if (!isNaN(id)) {
-            msg.channel.startTyping();
-            api.getShopsWithOpenFlags([id]).then(shops => {
-                if (shops.length === 0) {
-                    msg.channel.send(utils.templates.locationNotFound);
-                    msg.channel.stopTyping();
-                    return;
-                }
-                state.shop = shops[0];
-                state.timing = utils.constants.timings.now;
-                db.updateUser(msg.author.id, state).then(() => {
-                    msg.channel.stopTyping();
-                    msg.channel.send(utils.templates.done);
-                    msg.channel.send(utils.templates.contactInfo.name);
-                }).catch(err => {
-                    msg.channel.stopTyping();
-                    console.error(err);
-                    msg.channel.send(utils.templates.error);
-                });
+function selectLocation(id, state, interaction, db) {
+    id = parseInt(id);
+    if (!isNaN(id)) {
+        api.getShopsWithOpenFlags([id]).then(shops => {
+            if (shops.length === 0) {
+                interaction.reply(utils.templates.locationNotFound);
+                return;
+            }
+            state.shop = shops[0];
+            state.timing = utils.constants.timings.now;
+            db.updateUser(interaction.user.id, state).then(() => {
+                interaction.reply([utils.templates.done, utils.templates.contactInfo.name].join('\n'));
             }).catch(err => {
-                msg.channel.stopTyping();
                 console.error(err);
-                msg.channel.send(utils.templates.error);
             });
-            return;
-        }
+        }).catch(err => {
+            console.error(err);
+        });
+        return;
     }
-    msg.channel.send(utils.templates.locationNotFound);
+    interaction.reply(utils.templates.locationNotFound);
+}
+
+async function sendPaymentButton(state, interaction, db) {
+    if (!interaction.values)
+        return;
+    let id = interaction.values[0];
+    let paymentMethods = embeds.paymentMethodURLs(state.order);
+    let filtered = paymentMethods.filter(i => i.id === id);
+    if (filtered.length === 1) {
+        let method = filtered[0];
+        if (method.category === utils.constants.paymentGroups.onsite) {
+            // If payment method is internal (ie. COD or OnSite), make the request here
+            // and send redirect URL from result
+            let newRedirectUrl = await api.internalPaymentRedirect(method.url);
+            if (newRedirectUrl && newRedirectUrl.redirectUrl)
+                method.url = newRedirectUrl.redirectUrl;
+        }
+        if (method.url.length > 512) {
+            interaction.reply({content: [utils.templates.paymentMethod+" "+method.name, method.url].join("\n")})
+        } else {
+            interaction.reply({content: utils.templates.paymentMethod, components: [
+                    new MessageActionRow()
+                        .addComponents(
+                            new MessageButton()
+                                .setURL(method.url)
+                                .setLabel(method.name)
+                                .setStyle('LINK'),
+                        )
+                ]});
+        }
+
+        db.updateUser(interaction.user.id, utils.defaultState()).then(() => {}).catch(err => {
+            console.error(err);
+        })
+    }
 }
 
 function inputWhileOrder(state, msg, client, db) {
-    if (state.deliveryType === undefined) {
-        msg.channel.startTyping();
-        // Handle delivery type
-        if (/.*kuljet.*/.test(msg.content.toLowerCase()))
-            state.deliveryType = utils.constants.deliveryTypes.delivery;
-        else if (/.*ravinto.*/.test(msg.content.toLowerCase()))
-            state.deliveryType = utils.constants.deliveryTypes.eatInStore;
-        else if (/.*nou(t|d).*/.test(msg.content.toLowerCase()))
-            state.deliveryType = utils.constants.deliveryTypes.pickup;
-        else {
-            msg.channel.stopTyping();
-            msg.channel.send(utils.templates.invalidDelType+", "+utils.templates.orderingGuide)
-            return;
-        }
-        db.updateUser(msg.author.id, state).then(() => {
-            msg.channel.send(utils.templates.done);
-            handleAfterDTypeSelection(state, msg, client, db);
-            msg.channel.stopTyping();
-        }).catch(err => {
-            console.error(err);
-            msg.channel.stopTyping();
-            msg.channel.send(utils.templates.error);
-        });
-    } else if (state.deliveryType === utils.constants.deliveryTypes.delivery && !state.contact.coordinates.longitude && !state.contact.coordinates.latitude) {
+    if (state.deliveryType === utils.constants.deliveryTypes.delivery && !state.contact.coordinates.longitude && !state.contact.coordinates.latitude) {
         let address = msg.content;
         let parts = address.split(",");
         if (parts.length < 3) {
@@ -101,14 +107,13 @@ function inputWhileOrder(state, msg, client, db) {
             msg.channel.send(fixTable);
             return;
         }
-        msg.channel.startTyping();
+        msg.channel.typingStart();
         nominatimApi.search(address).then(result => {
             if (result.length > 0) {
                 let point = result[0];
                 msg.channel.send(utils.templates.searching)
                 let geoJson = {type: "Point", coordinates: [parseFloat(point.lon), parseFloat(point.lat)]};
                 mapGen({geojson: geoJson, attribution: utils.templates.osmNote}).then(img => {
-                    msg.channel.stopTyping();
                     state.contact.street = parts[0];
                     state.contact.postalCode = parts[1];
                     state.contact.city = parts[2];
@@ -129,27 +134,22 @@ function inputWhileOrder(state, msg, client, db) {
                                 });
                                 msg.channel.send(utils.templates.selectLocation);
                             }).catch(err => {
-                                msg.channel.stopTyping();
                                 console.error(err);
                                 msg.channel.send(utils.templates.error);
                             });
                         }, 500);
                     }).catch(err => {
-                        msg.channel.stopTyping();
                         console.error(err);
                         msg.channel.send(utils.templates.error);
                     });
                 }).catch(err => {
-                    msg.channel.stopTyping();
                     console.error(err);
                     msg.channel.send(utils.templates.error);
                 });
             } else {
-                msg.channel.stopTyping();
                 msg.channel.send(utils.templates.locationNotFound);
             }
         }).catch(err => {
-            msg.channel.stopTyping();
             console.error(err);
             msg.channel.send(utils.templates.error);
         });
@@ -157,17 +157,26 @@ function inputWhileOrder(state, msg, client, db) {
         let query = msg.content;
         if (query.length >= 3) {
             msg.channel.send(utils.templates.searching)
-            msg.channel.startTyping();
+            msg.channel.sendTyping();
             api.search(query).then(results => {
                 if (results.restaurants.results.length > 0) {
                     api.getShopsWithOpenFlags(results.restaurants.results.map(item => {return item.shopId})).then(shops => {
-                        msg.channel.stopTyping();
+                        let selectableItems = [];
                         shops.forEach(shop => {
-                            msg.channel.send(embeds.shopEmbed(shop, state.deliveryType));
+                            msg.channel.send({embeds: [embeds.shopEmbed(shop, state.deliveryType)]});
+                            if (shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] && shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] === "OPEN")
+                                selectableItems.push({label: shop.displayName.substr(0, 99), description: [shop.streetAddress, shop.zipCode, shop.city].join(", ").substr(0, 99), value: shop.restaurantId.toString()})
                         });
-                        msg.channel.send(utils.templates.selectLocation);
+                        const row = new MessageActionRow()
+                            .addComponents(
+                                new MessageSelectMenu()
+                                    .setCustomId('selectStore')
+                                    .setPlaceholder('Valise')
+                                    .addOptions(selectableItems),
+                            );
+                        if (selectableItems.length > 0)
+                            msg.channel.send({content: utils.templates.selectLocation, components: [row]});
                     }).catch(err => {
-                        msg.channel.stopTyping();
                         console.error(err);
                         msg.channel.send(utils.templates.error);
                     });
@@ -212,15 +221,20 @@ function inputWhileOrder(state, msg, client, db) {
             api.makeOrder(orderBody).then(result => {
                 if (result.orderOK) {
                     state.order = result;
-                    msg.channel.send(utils.templates.orderNeedsPayment)
                     msg.channel.send("Maksettavaa yhteensä. "+result.grandTotal+"€")
-                    embeds.paymentMethodsEmbed(result).forEach(item => {
-                        setTimeout(() => {msg.channel.send(item)}, 600);
-                    })
-                    db.updateUser(msg.author.id, utils.defaultState()).then(() => {}).catch(err => {
+                    let paymentMethods = embeds.paymentMethodURLs(result).map(i => {return {label: i.name, description: i.category, value: i.id.toString()}});
+                    const row = new MessageActionRow()
+                        .addComponents(
+                            new MessageSelectMenu()
+                                .setCustomId('selectPaymentMethod')
+                                .setPlaceholder('Valise')
+                                .addOptions(paymentMethods),
+                        );
+                    msg.channel.send({content: utils.templates.orderNeedsPayment, components: [row]})
+                    db.updateUser(msg.author.id, state).then(() => {}).catch(err => {
                         console.error(err);
                         msg.channel.send(utils.templates.error);
-                    });
+                    })
                 } else {
                     console.error(result);
                     msg.channel.send(utils.templates.error);
@@ -235,16 +249,20 @@ function inputWhileOrder(state, msg, client, db) {
             api.makeOrder(orderBody).then(result => {
                 if (result.orderOK) {
                     state.order = result;
-                    msg.channel.send(utils.templates.orderNeedsPayment)
                     msg.channel.send("Maksettavaa yhteensä. "+result.grandTotal+"€")
-                    embeds.paymentMethodsEmbed(result).forEach(item => {
-                        setTimeout(() => {msg.channel.send(item)}, 600);
-
-                    })
-                    db.updateUser(msg.author.id, utils.defaultState()).then(() => {}).catch(err => {
+                    let paymentMethods = embeds.paymentMethodURLs(result).map(i => {return {label: i.name, description: i.category, value: i.id.toString()}});
+                    const row = new MessageActionRow()
+                        .addComponents(
+                            new MessageSelectMenu()
+                                .setCustomId('selectPaymentMethod')
+                                .setPlaceholder('Valise')
+                                .addOptions(paymentMethods),
+                        );
+                    msg.channel.send({content: utils.templates.orderNeedsPayment, components: [row]})
+                    db.updateUser(msg.author.id, state).then(() => {}).catch(err => {
                         console.error(err);
                         msg.channel.send(utils.templates.error);
-                    });
+                    })
                 } else {
                     console.error(result);
                     msg.channel.send(utils.templates.error);
@@ -255,15 +273,17 @@ function inputWhileOrder(state, msg, client, db) {
             });
             return;
         }
-        db.updateUser(msg.author.id, state).then(() => {
-        }).catch(err => {
-            msg.channel.stopTyping();
-            console.error(err);
-            msg.channel.send(utils.templates.error);
-        });
+        if (!state.order) {
+            db.updateUser(msg.author.id, state).then(() => {
+            }).catch(err => {
+                msg.channel.stopTyping();
+                console.error(err);
+                msg.channel.send(utils.templates.error);
+            });
+        }
     }
 }
 
 module.exports = {
-    startOrder, inputWhileOrder, selectLocation
+    startOrder, inputWhileOrder, selectLocation, afterDeliveryTypeSelection, sendPaymentButton
 }

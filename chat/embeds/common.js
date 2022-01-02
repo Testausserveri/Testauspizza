@@ -15,6 +15,28 @@ const actionCompleteWithCartActions = {content: utils.templates.done, components
             )
     ]};
 
+const startOrderWithOptions = {
+    content: ["  **Tilaus**  ", ["->", utils.templates.orderingGuide].join(" ")].join("\n"),
+    components: [
+        new MessageActionRow()
+            .addComponents(
+                new MessageButton()
+                    .setCustomId('deliveryNouto')
+                    .setLabel('Nouto')
+                    .setStyle('PRIMARY'),
+                new MessageButton()
+                    .setCustomId('deliveryRavintola')
+                    .setLabel('Ravintola')
+                    .setStyle('PRIMARY'),
+                new MessageButton()
+                    .setCustomId('deliveryToimitus')
+                    .setLabel('Toimitus')
+                    .setStyle('PRIMARY'),
+            )
+    ]
+}
+
 module.exports = {
-    actionCompleteWithCartActions
+    actionCompleteWithCartActions,
+    startOrderWithOptions
 }

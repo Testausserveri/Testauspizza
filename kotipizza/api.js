@@ -209,6 +209,20 @@ function makeOrder(body) {
     });
 }
 
+function internalPaymentRedirect(url) {
+    return new Promise((resolve, reject) => {
+        http.get(url, res => {
+            if (res.statusCode === 200) {
+                resolve(res.body);
+            } else {
+                reject(undefined);
+            }
+        }, err => {
+            reject(err);
+        })
+    })
+}
+
 module.exports = {
     getIngredients,
     getShops,
@@ -223,5 +237,6 @@ module.exports = {
     search,
     getPrice,
     getNearbyShops,
-    getShopsWithOpenFlags
+    getShopsWithOpenFlags,
+    internalPaymentRedirect
 }
