@@ -1,9 +1,15 @@
 # 🍕 Testauspizza
 Testauspizza is a discord bot for ordering pizza from kotipizza.fi
 
-### Warning! UNSTABLE
-`main` branch contains unstable code for upcoming 1.1 release, use `1.0` for stable version
+## Features
 
-## To-Do
+- Put your luck to test, let Testauspizza choose a pizza for you with `/feelinglucky` command
+- Easy interface
+- Nearly all functionality from kotipizza.fi is implemented
+- `/search` command
+- Choose from list of popular meals (`/popular` command)
 
-- [ ] Convert old crude command-based UI to discord interactions with selectable menus and buttons 
+## Usage
+- Join to Testausserveri.fi discord ([https://discord.testausserveri.fi](https://discord.testausserveri.fi)) and DM Testauspizza bot
+#### OR
+- Run locally on your own server

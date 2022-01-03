@@ -49,7 +49,7 @@ function defaultContact() {
 function calculatePrice(product) {
     return new Promise((resolve, reject) => {
         let calcPrice = product.product.price || product.price;
-        let ingredientsPrice = 0;
+        let ingredientsPrice = 0.00;
         let ingredientsWithPrice = [];
         api.getIngredients().then(ingredients => {
             product.ingredients.forEach(ingredient => {
@@ -59,6 +59,8 @@ function calculatePrice(product) {
                         if (ingredientDosing.length > 0) {
                             ingredientDosing = ingredientDosing[0];
                             ingredientsPrice += ingredientDosing.priceWithVAT;
+                            console.log(ingredientDosing.priceWithVAT);
+                            console.log(ingredientsWithPrice);
                             ingredientsWithPrice.push(lIngredient.name+`, ${ingredientDosing.priceWithVAT}€`)
                         }
                     }
@@ -120,6 +122,7 @@ const global = {
 
 const templates = {
     error: "😢 Jokin meni pieleen, yritä myöhemmin uudelleen",
+    luckFailed: "😢 Tällä kertaa kävi huono tuuri, yritä myöhemmin uudelleen",
     startSession: "Aloita tilaus komennolla /pizza",
     welcome: "**Tervetuloa!**\n"+global.sessionCommands,
     done: "👍",
@@ -138,7 +141,7 @@ const templates = {
     continueShopping: "Voit jatkaa muiden tuotteiden lisäystä, listata ostoskorin komennolla `!cart`, poista tuote ostoskorista komennolla `!rs <numero>` tai jatkaa kassaan komennolla `!order`",
     cartCommands: "Ostoskorista voi poistaa tuotteen komennolla `/poistakori`",
     orderingGuide: "Haluatko kuljetusta, syötkö Kotipizzan ravintolassa vai noudatko ravintolasta?",
-    locationNotFound: "🤔 Osoitteela ei löytynyt mitään. Kokeile uudelleen toisella hakusanalla.",
+    locationNotFound: "🤔 Hakusanalla tai osoittella ei löytynyt tuloksia. Kokeile uudelleen toisella hakusanalla.",
     osmNote: "Testauspizza | © OpenStreetMapin tekijät",
     searching: "🔎 Haetaan...",
     searchShop: "🔎 Hae Kotipizza ravintola syöttämällä hakusana:",
@@ -146,7 +149,7 @@ const templates = {
     enterDeliveryAddress: "🗺️ Syötä toimitusosoite muodossa (<Osoite>, <Postinumero>, <Kaupunki>)",
     invalidAddressFormat: "Osoitteen muoto ei ole oikein. Oikea muoto: <Osoite>, <Postinumero>, <Kaupunki>",
     selectLocation: "Valitse ravintola",
-    noPickupLocationForDelivery: "⚠️Osoitteelle ei löytynyt noutoravintoloita. Aloita tilaus uudelleen komennolla `!order` ja valitse nouto tai ravintolassa syöminen.",
+    noPickupLocationForDelivery: "⚠️Osoitteelle ei löytynyt toimitukselle ravintoloita. Valitse toinen toimitusvaihtoehto, esim. nouto tai ravintolassa syöminen.",
     invalidDelType: "Väärä toimitustapa, ",
     delOptions: "Haluatko tilata heti vai tehdä ennakkotilauksen?\nVastaa `heti` tai `ennakkotilaus`.",
     contactInfo: {
@@ -156,7 +159,8 @@ const templates = {
         phone: "Syötä puhelinnumerosi:"
     },
     orderNeedsPayment: "Tilauksesi on tehty. Siirry maksamaan haluamasi maksutavalla. Sinut uudelleenohjataan tilauksenseurantasivulle.",
-    paymentMethod: "Maksu:"
+    paymentMethod: "Maksu:",
+    noPointsAvailable: "⚠️Valitettavasti saatavilla olevat Kotipizza-ravintolat ovat kiinni ja/tai ei hyväksy nykyistä toimitusehtoa. Kokeile vaihtaa toimitustapa tai ravintolan hakusana."
 }
 
 const constants = {

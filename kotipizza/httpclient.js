@@ -3,7 +3,7 @@ let needle = require('needle');
 const config = {
     json: true,
     headers: {
-        'User-Agent': 'Testauspizza/1.0'
+        'User-Agent': 'Testauspizza/1.1'
     }
 }
 

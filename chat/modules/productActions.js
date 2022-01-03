@@ -14,6 +14,12 @@ async function add(state, interaction, db, onlyResult=false) {
     }
 }
 
+async function cancelSelection(state, interaction, db) {
+    state.temp = utils.defaultTemp();
+    await db.updateUser(interaction.user.id, state);
+    interaction.reply(utils.templates.done);
+}
+
 function remove(state, interaction, db, id="1") {
     id = parseInt(id);
     if (!isNaN(id)) {
@@ -43,7 +49,7 @@ function removeById(state, interaction, db, id) {
     }
 }
 
-function removePicker(state, interaction, db) {
+function removePicker(state, interaction) {
     if (state.orderItems.length > 0) {
         let selectableItems = state.orderItems.map(i => {return {label: i.product.name.substr(0, 99), description:  i.product.description.substr(0, 99), value:  i.product.productID.toString()}})
         let actionRow = new MessageActionRow()
@@ -58,5 +64,5 @@ function removePicker(state, interaction, db) {
 }
 
 module.exports = {
-    add, remove, removePicker, removeById
+    add, remove, removePicker, removeById, cancelSelection
 }

@@ -55,7 +55,7 @@ function select(state, interaction, db, id=undefined) {
                 state.temp = utils.defaultTemp();
                 state.temp.currentProduct = result.product;
                 db.updateUser(interaction.user.id, state).then(() => {
-                    let msgPayload = {components: [result.sizesRow]};
+                    let msgPayload = {components: result.cancelRow ? [result.sizesRow, result.cancelRow] : [result.sizesRow]};
                     if (result.content) {
                         msgPayload.content = result.content;
                     } else {

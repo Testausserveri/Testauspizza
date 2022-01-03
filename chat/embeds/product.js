@@ -1,5 +1,5 @@
 const api = require("../../kotipizza/api");
-const {MessageActionRow, MessageSelectMenu} = require("discord.js");
+const {MessageActionRow, MessageSelectMenu, MessageButton} = require("discord.js");
 const ingredientsEmbeds = require("./ingredients");
 const Discord = require("discord.js");
 const utils = require("../utils");
@@ -13,7 +13,7 @@ function product(id, state,interaction, db, thumbnail=false) {
             }
             let sizes = product.productSizes.map(item => {return {label: item.name.substr(0, 99), description: (item.calculatedPrice ? " "+item.calculatedPrice+"€" : ""), value: item.productSizeID.toString()}});
             const sizesRow = new MessageActionRow();
-            console.log(sizes, thumbnail);
+            const cancelRow = new MessageActionRow();
             if (sizes.length === 1 && !thumbnail) {
                 state.temp.currentSize = product.productSizes[0];
                 state.temp.ingredients = [...state.temp.currentSize.ingredients];
@@ -35,6 +35,12 @@ function product(id, state,interaction, db, thumbnail=false) {
                         .setPlaceholder('Valitse koko')
                         .addOptions(sizes),
                 );
+                cancelRow.addComponents(
+                    new MessageButton()
+                        .setCustomId('selectionCancel')
+                        .setLabel('Peruuta')
+                        .setStyle('PRIMARY')
+                );
             }
 
             let popularEmbed = new Discord.MessageEmbed()
@@ -43,7 +49,7 @@ function product(id, state,interaction, db, thumbnail=false) {
                 .setTitle(product.name)
                 .setDescription(product.description)
                 .addField("Hinta", (product.hasMinimumPrice ? "alk. " : "")+product.price+"€")
-            resolve({popularEmbed, product, sizesRow});
+            resolve({popularEmbed, product, sizesRow, cancelRow});
         }).catch(err => {reject(err)});
     });
 }

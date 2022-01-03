@@ -6,6 +6,9 @@ function openDBConnection(dbname, username, password, host) {
         charset: 'utf8',
         collate: 'utf8_unicode_ci',
         dialect: 'mysql',
+        dialectOptions: {
+            timezone: "local",
+        },
         logging: false,
         timezone: 'Europe/Helsinki'
     });

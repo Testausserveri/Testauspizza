@@ -28,6 +28,10 @@ async function showIngredientsCard(state, interaction, db, onlyResult=false) {
                 .setCustomId('deleteIngredient')
                 .setLabel('Poista ainesosa')
                 .setStyle('DANGER'),
+            new MessageButton()
+                .setCustomId('selectionCancel')
+                .setLabel('Peruuta')
+                .setStyle('PRIMARY'),
         );
     if (onlyResult)
         return {embed, row};

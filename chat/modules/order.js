@@ -19,19 +19,11 @@ function startOrder(state, interaction, db) {
     });
 }
 
-function afterDeliveryTypeSelection(state, interaction, db) {
+function afterDeliveryTypeSelection(state, interaction) {
     if (state.deliveryType === utils.constants.deliveryTypes.delivery) {
         interaction.reply(utils.templates.enterDeliveryAddress)
     } else {
         interaction.reply(utils.templates.searchShop);
-    }
-}
-
-function handleAfterDTypeSelection(state, msg, client, db) {
-    if (state.deliveryType === utils.constants.deliveryTypes.delivery) {
-        msg.channel.send(utils.templates.enterDeliveryAddress)
-    } else {
-        msg.channel.send(utils.templates.searchShop);
     }
 }
 
@@ -46,7 +38,7 @@ function selectLocation(id, state, interaction, db) {
             state.shop = shops[0];
             state.timing = utils.constants.timings.now;
             db.updateUser(interaction.user.id, state).then(() => {
-                interaction.reply([utils.templates.done, utils.templates.contactInfo.name].join('\n'));
+                interaction.reply(utils.templates.contactInfo.name);
             }).catch(err => {
                 console.error(err);
             });
@@ -93,6 +85,7 @@ async function sendPaymentButton(state, interaction, db) {
     }
 }
 
+
 function inputWhileOrder(state, msg, client, db) {
     if (state.deliveryType === utils.constants.deliveryTypes.delivery && !state.contact.coordinates.longitude && !state.contact.coordinates.latitude) {
         let address = msg.content;
@@ -107,7 +100,7 @@ function inputWhileOrder(state, msg, client, db) {
             msg.channel.send(fixTable);
             return;
         }
-        msg.channel.typingStart();
+        msg.channel.sendTyping();
         nominatimApi.search(address).then(result => {
             if (result.length > 0) {
                 let point = result[0];
@@ -120,19 +113,29 @@ function inputWhileOrder(state, msg, client, db) {
                     state.contact.coordinates.longitude = geoJson.coordinates[0];
                     state.contact.coordinates.latitude = geoJson.coordinates[1];
                     db.updateUser(msg.author.id, state).then(() => {
-                        msg.channel.send(`Sijainti valittu: **${point.display_name}**`, {files: [img]});
+                        msg.channel.send({content: `Sijainti valittu: **${point.display_name}**`, files: [img]});
                         setTimeout(() => {
                             msg.channel.send(utils.templates.searchNearestShop);
                             api.getNearbyShops(state.deliveryType.toUpperCase(),geoJson.coordinates.reverse().join(",")).then(shops => {
-                                msg.channel.stopTyping();
+                                // Filter shops only available for delivery
+                                shops.filter(shop => {return shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] && shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] === "OPEN"});
                                 if (shops.length === 0) {
                                     msg.channel.send(utils.templates.noPickupLocationForDelivery)
                                     return;
                                 }
+                                let selectableItems = [];
                                 shops.forEach(shop => {
-                                    msg.channel.send(embeds.shopEmbed(shop, state.deliveryType));
+                                    selectableItems.push({label: shop.displayName.substr(0, 99), description: [shop.streetAddress, shop.zipCode, shop.city].join(", ").substr(0, 99), value: shop.restaurantId.toString()})
                                 });
-                                msg.channel.send(utils.templates.selectLocation);
+                                const row = new MessageActionRow()
+                                    .addComponents(
+                                        new MessageSelectMenu()
+                                            .setCustomId('selectStore')
+                                            .setPlaceholder('Valise')
+                                            .addOptions(selectableItems),
+                                    );
+                                if (selectableItems.length > 0)
+                                    msg.channel.send({content: utils.templates.selectLocation, components: [row]});
                             }).catch(err => {
                                 console.error(err);
                                 msg.channel.send(utils.templates.error);
@@ -162,10 +165,10 @@ function inputWhileOrder(state, msg, client, db) {
                 if (results.restaurants.results.length > 0) {
                     api.getShopsWithOpenFlags(results.restaurants.results.map(item => {return item.shopId})).then(shops => {
                         let selectableItems = [];
-                        shops.forEach(shop => {
-                            msg.channel.send({embeds: [embeds.shopEmbed(shop, state.deliveryType)]});
-                            if (shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] && shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] === "OPEN")
-                                selectableItems.push({label: shop.displayName.substr(0, 99), description: [shop.streetAddress, shop.zipCode, shop.city].join(", ").substr(0, 99), value: shop.restaurantId.toString()})
+                        // Filter shops only available for delivery
+                        shops.filter(shop => {return shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] && shop['openFor'+utils.capitalizeFirstLetter(state.deliveryType.toLowerCase())+"Status"] === "OPEN"});
+                        shops.splice(0, 25).forEach(shop => {
+                            selectableItems.push({label: shop.displayName.substr(0, 99), description: [shop.streetAddress, shop.zipCode, shop.city].join(", ").substr(0, 99), value: shop.restaurantId.toString()})
                         });
                         const row = new MessageActionRow()
                             .addComponents(
@@ -176,6 +179,8 @@ function inputWhileOrder(state, msg, client, db) {
                             );
                         if (selectableItems.length > 0)
                             msg.channel.send({content: utils.templates.selectLocation, components: [row]});
+                        else
+                            msg.channel.send(utils.templates.noPointsAvailable)
                     }).catch(err => {
                         console.error(err);
                         msg.channel.send(utils.templates.error);
@@ -185,23 +190,18 @@ function inputWhileOrder(state, msg, client, db) {
                 msg.channel.send(utils.templates.locationNotFound);
             }).catch(err => {
                 console.error(err);
-                msg.channel.stopTyping();
                 msg.channel.send(utils.templates.error);
             });
             return;
         }
         msg.channel.send(utils.templates.invalidQuery);
     } else if (!state.timing) {
-        if (/.*heti|nyt.*/.test(msg.content.toLowerCase())) {
-            state.timing = utils.constants.timings.now;
-            msg.channel.send(utils.templates.done);
-        } else if (/.*ennak.*/.test(msg.content.toLowerCase())) {
-            state.timing = utils.constants.timings.ennakkotilaus;
-            msg.channel.send(utils.templates.done);
-
-        } else {
-            msg.channel.send(utils.templates.delOptions)
-        }
+        state.timing = utils.constants.timings.now;
+        db.updateUser(msg.author.id, state).then(() => {
+        }).catch(err => {
+            console.error(err);
+            msg.channel.send(utils.templates.error);
+        });
     } else if (state.timing !== utils.constants.timings.now) {
         // TODO
     } else {
@@ -276,7 +276,6 @@ function inputWhileOrder(state, msg, client, db) {
         if (!state.order) {
             db.updateUser(msg.author.id, state).then(() => {
             }).catch(err => {
-                msg.channel.stopTyping();
                 console.error(err);
                 msg.channel.send(utils.templates.error);
             });

@@ -6,6 +6,12 @@
     "password": "",
     "host": ""
   },
+  "allowedFeelingLuckyCategories": [
+    120,
+    122,
+    123,
+    150
+  ],
   "debug": false,
   "_comment": "Nominatim has a rate limit. For production, use your own nominatim installation.",
   "nominatimBackendUrl": "https://nominatim.openstreetmap.org/",
